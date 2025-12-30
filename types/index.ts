@@ -12,6 +12,7 @@ export type Column ={
 }
 
 export interface KanbanStore{
+    updateColumnTitle: any;
     // 1. Primitive State
     columns: Column[];
     tasks: Task[];

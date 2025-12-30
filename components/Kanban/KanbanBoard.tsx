@@ -101,7 +101,7 @@ const KanbanBoard = () => {
             </DndContext>
 
             <button 
-                className="border px-2 p-1 rounded-md" 
+                className="border px-2 p-1 rounded-md ml-5" 
                 onClick={callAddColumn}
             >
                 + Add Column

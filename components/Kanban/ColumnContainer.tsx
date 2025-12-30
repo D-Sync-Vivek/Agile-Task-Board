@@ -5,12 +5,16 @@ import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { SortableContext } from "@dnd-kit/sortable"
 import TaskCard from "./TaskCard"
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 
 const ColumnContainer = ({ column }: { column: Column }) => {
 
+    const [isEditModeOn, setIsEditModeOn] = useState(false)
+    const [title, setTitle] = useState("");
+
     const addTask = useKanbanStore((state) => state.addTask);
     const deleteColumn = useKanbanStore((state) => state.deleteColumn)
+    const updateTitle = useKanbanStore((state) => state.updateColumnTitle)
 
     const tasks = useKanbanStore((state) => state.tasks)
 
@@ -34,12 +38,24 @@ const ColumnContainer = ({ column }: { column: Column }) => {
         data: {
             type: "Column",
             column
-        }
+        },
+        disabled: isEditModeOn
     })
 
     const style = {
         transform: CSS.Transform.toString(transform),
         transition
+    }
+
+    const toggleEditMode = () => {
+        setIsEditModeOn((prev) => !prev);
+    }
+
+    const saveTitle = () => {
+        setIsEditModeOn(false);
+        if (title !== column.title) {
+            updateTitle(column.id, title)
+        }
     }
 
     if (isDragging) {
@@ -52,10 +68,6 @@ const ColumnContainer = ({ column }: { column: Column }) => {
         );
     }
 
-    function callDeleteColumn() {
-        const id = column.id
-        deleteColumn(id)
-    }
     return (
 
         <div
@@ -67,27 +79,48 @@ const ColumnContainer = ({ column }: { column: Column }) => {
             <div
                 {...attributes}
                 {...listeners}
+                onDoubleClick={toggleEditMode}
                 className="bg-blue-400 text-md h-15 cursor-grab rounded-md rounded-b-none p-3 font-bold border-blue-500 border-2 flex items-center justify-between"
             >
-                <div className="flex gap-2">
-                    <div className="flex justify-center items-center bg-cyan-400 px-2 py-1 text-sm rounded-full">
-                        {columnTasks.length}
-                    </div>
-                    {column.title}
-                </div>
+                {isEditModeOn ? 
+                (<input
+                    autoFocus 
+                    placeholder="Enter title"
+                    className="w-full border-none rounded bg-transparent text-black focus:outline-none"
+                    onBlur={saveTitle}
+                    value={title}
+                    onKeyDown={(e) => {
+                        if(e.key === "Enter"){
+                            saveTitle();
+                        }
+                    }}
+                    onChange={(e) => setTitle(e.target.value)}
+                ></input>)
+                    :
+                    <div className="flex gap-2">
+                        <div className="flex justify-center items-center bg-cyan-400 px-2 py-1 text-sm rounded-full">
+                            {columnTasks.length}
+                        </div>
+                        {column.title}
+                    </div>}
 
-                <button
-                    onClick={() => deleteColumn(column.id)}
-                    className="stroke-gray-500 hover:stroke-white hover:bg-cyan-400 rounded px-1 py-2"
-                >
-                    🗑️
-                </button>
+                {!isEditModeOn && (
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            deleteColumn(column.id)
+                        }}
+                        className="stroke-gray-500 hover:stroke-white hover:bg-cyan-400 rounded px-1 py-2"
+                    >
+                        🗑️
+                    </button>
+                )}
             </div>
             {/* Column Body (Task List) */}
             <div className="flex grow flex-col gap-4 p-2 overflow-x-hidden overflow-y-auto">
                 <SortableContext items={tasksIDs}>
                     {columnTasks.map((task) => (
-                        <TaskCard key={task.id} task={task}/>
+                        <TaskCard key={task.id} task={task} />
                     ))}
                 </SortableContext>
             </div>
