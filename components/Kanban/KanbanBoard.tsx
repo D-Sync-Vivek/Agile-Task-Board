@@ -1,93 +1,53 @@
 "use client"
 import { useKanbanStore } from "@/store/useKanbanStore"
 import { SortableContext } from "@dnd-kit/sortable";
+import { DndContext, DragOverlay } from "@dnd-kit/core";
+import { createPortal } from "react-dom";
+import { usekanbanDnD } from "@/hooks/useKanbanDnD";
+import { useEffect, useState } from "react";
 import ColumnContainer from "./ColumnContainer";
-import { arrayMove } from "@dnd-kit/sortable";
-import { useState } from "react";
-import {
-    DndContext,
-    DragEndEvent,
-    DragOverEvent,
-    useSensor,
-    useSensors,
-    PointerSensor,
-} from "@dnd-kit/core";
+import TaskCard from "./TaskCard";
+import BoardGuide from "./BoardGuide";
 
 const KanbanBoard = () => {
     const columns = useKanbanStore((state) => state.columns)
     const addColumn = useKanbanStore((state) => state.addColumn)
     const columnsIDs = columns.map((column) => column.id)
-    const setColumns = useKanbanStore((state) => state.setColumns)
-    const setTasks = useKanbanStore((state) => state.setTasks);
+    const {
+        sensors,
+        onDragStart,
+        onDragEnd,
+        onDragOver,
+        activeColumn,
+        activeTask,
+    } = usekanbanDnD();
+    const [isMounted, setIsMounted] = useState(false)
 
-    const sensors = useSensors(
-        useSensor(PointerSensor, {
-            activationConstraint: {
-                distance: 3, // Start dragging only after moving 3px
-            },
-        })
-    );
+    useEffect(() => {
+        setIsMounted(true)
+    }, [])
 
     function callAddColumn() {
         addColumn(`Column ${columns.length + 1}`);
     }
 
-    function onDragEnd(event: DragEndEvent) {
-        const { active, over } = event;
-        if (!over) return;
-        if (active.id === over.id) return;
-
-        const oldIndex = columns.findIndex((col) => col.id === active.id)
-        const newIndex = columns.findIndex((col) => col.id === over.id);
-        setColumns(arrayMove(columns, oldIndex, newIndex));
-    }
-
-    function onDragOver(event: DragEndEvent) {
-        const { active, over } = event;
-        if (!over) return;
-
-        const activeId = active.id
-        const overId = over.id
-
-        if (activeId === overId) return;
-
-        const isActiveTask = active.data.current?.type === "Task";
-        const isOverTask = over.data.current?.type === "Task";
-
-        if (!isActiveTask) return;
-
-        //Read Live State to avoid closure staleness
-        const tasks = useKanbanStore.getState().tasks;
-
-        // 1. Dropping a Task over another Task.
-        if (isActiveTask && isOverTask) {
-            const activeIndex = tasks.findIndex((t) => t.id === activeId);
-            const overIndex = tasks.findIndex((t) => t.id === overId);
-
-            if (tasks[activeIndex].columnId !== tasks[overIndex].columnId) {
-                tasks[activeIndex].columnId = tasks[overIndex].columnId;
-                return setTasks(arrayMove(tasks, activeIndex, overIndex - 1))
-            }
-            return setTasks(arrayMove(tasks, activeIndex, overIndex));
-        }
-
-        const isOverColumn = over.data.current?.type === "Column";
-
-        // 2. Dropping a Task over a Column.
-        if (isActiveTask && isOverColumn) {
-            const activeIndex = tasks.findIndex((t) => t.id === activeId);
-
-            if (tasks[activeIndex].columnId !== overId) {
-                tasks[activeIndex].columnId = overId;
-                return setTasks(arrayMove(tasks, activeIndex, activeIndex))
-            }
-        }
-
-    }
+    const dragOverlayContent = isMounted ? createPortal(
+        <DragOverlay>
+            {activeColumn && (
+                <ColumnContainer column={activeColumn} />
+            )}
+            {activeTask && (
+                <TaskCard task={activeTask} />
+            )}
+        </DragOverlay>,
+        document.body
+    ) : null;
+    
     return (
-        <div className="m-auto flex mt-5 min-h-screen w-full items-start overflow-x-auto overflow-y-hidden px-10">
+        <div className="m-auto flex p-2 md:p-10 min-h-screen w-full items-start overflow-x-auto overflow-y-hidden">
             <DndContext
                 sensors={sensors}
+                onDragStart={onDragStart}
                 onDragEnd={onDragEnd}
                 onDragOver={onDragOver}
             >
@@ -98,14 +58,17 @@ const KanbanBoard = () => {
                         ))}
                     </SortableContext>
                 </div>
+                {dragOverlayContent}
             </DndContext>
 
-            <button 
-                className="border px-2 p-1 rounded-md ml-5" 
+            <button
+                className="absolute bottom-20 right-[45vw] border min-w-35 px-2 p-1 rounded-md ml-5 hover:bg-gray-400 hover:scale-105"
                 onClick={callAddColumn}
             >
                 + Add Column
             </button>
+            <BoardGuide/>
+            <p className="absolute bottom-0 text-gray-500 flex items-center justify-center w-[97vw]">Press "i" or "I" to toggle the instructions</p>
         </div>
     )
 }

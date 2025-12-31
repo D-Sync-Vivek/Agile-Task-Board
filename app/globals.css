@@ -1,1 +1,11 @@
 @import "tailwindcss";
+
+:root {
+    /* Main Colors */
+    --main-bg-color: #5374a6;
+    --column-bg-color: #161C22;
+
+    /* Dimensions */
+    --column-width: 350px;
+    --column-height: 500px;
+}

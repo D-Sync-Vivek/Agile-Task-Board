@@ -5,7 +5,7 @@ import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { SortableContext } from "@dnd-kit/sortable"
 import TaskCard from "./TaskCard"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 const ColumnContainer = ({ column }: { column: Column }) => {
 
@@ -63,7 +63,7 @@ const ColumnContainer = ({ column }: { column: Column }) => {
             <div
                 ref={setNodeRef}
                 style={style}
-                className="bg-gray-100 opacity-40 border-2 border-rose-500 w-87.5 h-125 max-h-125 rounded-md flex flex-col"
+                className="bg-gray-100 opacity-40 border-2 border-gray-500 w-(--column-width) h-(--column-height) max-h-(--column-height) rounded-md flex flex-col"
             ></div>
         );
     }
@@ -73,14 +73,14 @@ const ColumnContainer = ({ column }: { column: Column }) => {
         <div
             ref={setNodeRef}
             style={style}
-            className="bg-gray-100 w-87.5 h-125 max-h-125 rounded-md flex flex-col"
+            className="bg-gray-100 w-(--column-width) h-(--column-height) max-h-(--column-height) rounded-md flex flex-col"
         >
             {/* Column Header */}
             <div
                 {...attributes}
                 {...listeners}
                 onDoubleClick={toggleEditMode}
-                className="bg-blue-400 text-md h-15 cursor-grab rounded-md rounded-b-none p-3 font-bold border-blue-500 border-2 flex items-center justify-between"
+                className="bg-(--main-bg-color) text-md h-15 cursor-grab rounded-md rounded-b-none p-3 font-bold border-(--main-bg-color) border-2 flex items-center justify-between"
             >
                 {isEditModeOn ? 
                 (<input
@@ -98,7 +98,7 @@ const ColumnContainer = ({ column }: { column: Column }) => {
                 ></input>)
                     :
                     <div className="flex gap-2">
-                        <div className="flex justify-center items-center bg-cyan-400 px-2 py-1 text-sm rounded-full">
+                        <div className="flex justify-center items-center bg-blue-100 px-2 py-1 text-sm rounded-full">
                             {columnTasks.length}
                         </div>
                         {column.title}
@@ -110,9 +110,9 @@ const ColumnContainer = ({ column }: { column: Column }) => {
                             e.stopPropagation();
                             deleteColumn(column.id)
                         }}
-                        className="stroke-gray-500 hover:stroke-white hover:bg-cyan-400 rounded px-1 py-2"
+                        className="stroke-gray-500 hover:stroke-white hover:bg-red-500 rounded px-1 py-2"
                     >
-                        🗑️
+                        <img src="/trash.gif" alt="delete" width={30} />
                     </button>
                 )}
             </div>
@@ -128,7 +128,7 @@ const ColumnContainer = ({ column }: { column: Column }) => {
 
             {/* Column Footer (Add Task Button) */}
             <button
-                className="flex gap-2 items-center border-cyan-400 border-2 rounded-md p-4 border-x-cyan-400 hover:bg-blue-400 hover:text-rose-500 active:bg-black"
+                className="flex gap-2 items-center border-(--column-bg-color) border-2 rounded-md p-4 border-x-(--column-bg-color) hover:bg-(--main-bg-color) hover:text-rose-500 active:bg-black"
                 onClick={() => {
                     addTask(column.id)
                 }}

@@ -13,7 +13,7 @@ const TaskCard = ({ task }: Props) => {
     const updateTask = useKanbanStore((state) => state.updateTask);
 
     const [isEditModeOn, setIsEditModeOn] = useState(false);
-    const [newContent, setNewContent] = useState("");
+    const [newContent, setNewContent] = useState(task.content);
 
     const {
         setNodeRef,
@@ -74,8 +74,8 @@ const TaskCard = ({ task }: Props) => {
                     placeholder="Task Content here"
                     onBlur={saveTask}
                     onKeyDown={(e) => {
-                        if (e.key === "Enter" && e.shiftKey) {
-                            toggleEditMode();
+                        if (e.key === "Enter" && !e.shiftKey) {
+                            saveTask();
                         }
                     }}
                     onChange={(e) => setNewContent(e.target.value)}
@@ -92,9 +92,9 @@ const TaskCard = ({ task }: Props) => {
                         e.stopPropagation();
                         deleteTask(task.id);
                     }}
-                    className="stroke-gray-500 hover:stroke-white hover:bg-blue-400 absolute right-4 top-1/2 -translate-y-1/2 bg-blue-400 p-2 rounded opacity-60 hover:opacity-100"
+                    className="stroke-gray-500 hover:stroke-white hover:bg-red-500 absolute right-4 top-1/2 -translate-y-1/2 bg-blue-200 p-2 rounded opacity-60 hover:opacity-100"
                 >
-                    🗑️
+                    <img src="/trash.gif" alt="delete" width={20} />
                 </button>
             )}
         </div>
