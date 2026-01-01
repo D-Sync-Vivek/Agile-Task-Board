@@ -7,8 +7,11 @@ import {
   useSensors,
   PointerSensor,
   DragStartEvent,
+  TouchSensor,
+  KeyboardSensor,
 } from "@dnd-kit/core";
 import { Column, Task } from "@/types";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 
 export function usekanbanDnD() {
   const columns = useKanbanStore((state) => state.columns);
@@ -20,10 +23,24 @@ export function usekanbanDnD() {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   const sensors = useSensors(
+    // Mouse/TrackPad: Moving 10px to start
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 3, // Start dragging only after moving 3px
+        distance: 10, // Start dragging only after moving 3px
       },
+    }),
+
+    // Mobile/Touch: Holding for 250ms to start
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,  // press and hold.
+        tolerance: 5,
+      },
+    }),
+
+    // Keyboard for accessibility
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates
     })
   );
 

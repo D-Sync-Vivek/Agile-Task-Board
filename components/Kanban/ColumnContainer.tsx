@@ -63,7 +63,7 @@ const ColumnContainer = ({ column }: { column: Column }) => {
             <div
                 ref={setNodeRef}
                 style={style}
-                className="bg-gray-100 opacity-40 border-2 border-gray-500 w-(--column-width) h-(--column-height) max-h-(--column-height) rounded-md flex flex-col"
+                className="bg-gray-100 opacity-40 border-2 border-gray-500 w-75 md:w-(--column-width) h-(--column-height) max-h-[80vh] rounded-md flex flex-col snap-center"
             ></div>
         );
     }
@@ -73,7 +73,7 @@ const ColumnContainer = ({ column }: { column: Column }) => {
         <div
             ref={setNodeRef}
             style={style}
-            className="bg-gray-100 w-(--column-width) h-(--column-height) max-h-(--column-height) rounded-md flex flex-col"
+            className="bg-gray-100 w-75 md:w-(--column-width) h-150 md:h-(--column-height) max-h-[80vh] rounded-md flex flex-col snap-center"
         >
             {/* Column Header */}
             <div
@@ -86,7 +86,7 @@ const ColumnContainer = ({ column }: { column: Column }) => {
                 (<input
                     autoFocus 
                     placeholder="Enter title"
-                    className="w-full border-none rounded bg-transparent text-black focus:outline-none"
+                    className="w-full border-none rounded bg-transparent text-white focus:outline-none"
                     onBlur={saveTitle}
                     value={title}
                     onKeyDown={(e) => {
@@ -97,8 +97,8 @@ const ColumnContainer = ({ column }: { column: Column }) => {
                     onChange={(e) => setTitle(e.target.value)}
                 ></input>)
                     :
-                    <div className="flex gap-2">
-                        <div className="flex justify-center items-center bg-blue-100 px-2 py-1 text-sm rounded-full">
+                    <div className="flex gap-2 text-white">
+                        <div className="flex justify-center items-center text-black bg-blue-100 px-2 py-1 text-sm rounded-full">
                             {columnTasks.length}
                         </div>
                         {column.title}
@@ -128,12 +128,12 @@ const ColumnContainer = ({ column }: { column: Column }) => {
 
             {/* Column Footer (Add Task Button) */}
             <button
-                className="flex gap-2 items-center border-(--column-bg-color) border-2 rounded-md p-4 border-x-(--column-bg-color) hover:bg-(--main-bg-color) hover:text-rose-500 active:bg-black"
+                className="flex justify-center font-semibold gap-2 items-center border-2 rounded-md p-4  hover:bg-(--main-bg-color) hover:text-white active:bg-black"
                 onClick={() => {
                     addTask(column.id)
                 }}
             >
-                <span className="text-xl">+</span> Add Task
+                + Add Task
             </button>
         </div>
 

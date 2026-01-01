@@ -42,9 +42,9 @@ const KanbanBoard = () => {
         </DragOverlay>,
         document.body
     ) : null;
-    
+
     return (
-        <div className="m-auto flex p-2 md:p-10 min-h-screen w-full items-start overflow-x-auto overflow-y-hidden">
+        <div className="relative m-auto flex p-2 md:p-10 w-full md:min-h-screen items-start overflow-x-auto overflow-y-hidden">
             <DndContext
                 sensors={sensors}
                 onDragStart={onDragStart}
@@ -57,18 +57,19 @@ const KanbanBoard = () => {
                             <ColumnContainer key={column.id} column={column} />
                         ))}
                     </SortableContext>
+
+                    <div className="fixed bottom-10 flex justify-center items-cente w-[95vw] mx-auto">
+                        <button className="h-15 cursor-pointer rounded-lg bg-(--main-bg-color) hover:bg-[#1a64d4]  border-2 border-(--column-bg-color) p-4 ring-rose-500 hover:ring-2 flex justify-center gap-2 snap-center text-white font-semibold hover:scale-105"
+                            onClick={callAddColumn}
+                        >
+                            + Add Column
+                        </button>
+                    </div>
                 </div>
                 {dragOverlayContent}
             </DndContext>
-
-            <button
-                className="absolute bottom-20 right-[45vw] border min-w-35 px-2 p-1 rounded-md ml-5 hover:bg-gray-400 hover:scale-105"
-                onClick={callAddColumn}
-            >
-                + Add Column
-            </button>
-            <BoardGuide/>
-            <p className="absolute bottom-0 text-gray-500 flex items-center justify-center w-[97vw]">Press "i" or "I" to toggle the instructions</p>
+            <BoardGuide />
+            <p className="hidden  absolute bottom-0 text-gray-500 md:flex items-center justify-center w-[97vw]">Press "ctrl" + "i" to toggle the instructions</p>
         </div>
     )
 }
