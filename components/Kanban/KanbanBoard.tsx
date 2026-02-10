@@ -58,8 +58,9 @@ const KanbanBoard = () => {
                         ))}
                     </SortableContext>
 
-                    <div className="fixed bottom-3 flex justify-center items-cente w-[95vw] mx-auto">
-                        <button className="px-4 py-3 cursor-pointer rounded-lg bg-(--main-bg-color) hover:bg-[#1a64d4]  border-2 border-(--column-bg-color) ring-rose-500 hover:ring-2 flex justify-center gap-2 snap-center text-white  hover:scale-105 font-bold"
+                    <div className="fixed bottom-3 left-1/2 -translate-x-1/2">
+                        <button
+                            className="px-4 py-3 cursor-pointer rounded-lg bg-gray-900 hover:bg-gray-800 border-2 border-gray-800 ring-rose-500 hover:ring-2 text-white hover:scale-105 font-bold shadow-xl"
                             onClick={callAddColumn}
                         >
                             +
