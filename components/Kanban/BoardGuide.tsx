@@ -16,7 +16,7 @@ const BoardGuide = () => {
     if (!isVisible) return null;
     return (
         <>
-            <div className="hidden md:block fixed bottom-4 left-4 p-4 rounded-lg bg-gray-800 opacity-80 hover:opacity-100 transition-opacity text-white text-sm w-64 pointer-events-none select-none z-50">
+            <div className="hidden md:block fixed bottom-4 right-4 p-4 rounded-lg bg-gray-800 opacity-80 hover:opacity-100 transition-opacity text-white text-sm w-64 pointer-events-none select-none z-50">
                 <h3 className="font-bold mb-2 text-gray-300">How to use:</h3>
                 <ul className="list-disc pl-4 space-y-1">
                     <li>
@@ -33,6 +33,8 @@ const BoardGuide = () => {
                         <span className="font-semibold text-rose-400">Delete:</span> Hover & click trash icon
                     </li>
                 </ul>
+
+                <p className="mt-5 text-gray-400">Press "ctrl" + "i" to toggle the instructions</p>
             </div>
         </>
     )

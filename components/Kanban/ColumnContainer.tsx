@@ -73,14 +73,14 @@ const ColumnContainer = ({ column }: { column: Column }) => {
         <div
             ref={setNodeRef}
             style={style}
-            className="bg-gray-100 w-75 md:w-(--column-width) h-150 md:h-(--column-height) max-h-[80vh] rounded-md flex flex-col snap-center"
+            className="bg-gray-900 w-75 md:w-(--column-width) h-150 md:h-(--column-height) max-h-[80vh] rounded-md flex flex-col snap-center"
         >
             {/* Column Header */}
             <div
                 {...attributes}
                 {...listeners}
                 onDoubleClick={toggleEditMode}
-                className="bg-(--main-bg-color) text-md h-15 cursor-grab rounded-md rounded-b-none p-3 font-bold border-(--main-bg-color) border-2 flex items-center justify-between"
+                className="bg-gray-900 text-md h-15 cursor-grab rounded-md rounded-b-none p-3 font-bold border-(--main-bg-color) border-2 flex items-center justify-between"
             >
                 {isEditModeOn ? 
                 (<input
@@ -128,7 +128,7 @@ const ColumnContainer = ({ column }: { column: Column }) => {
 
             {/* Column Footer (Add Task Button) */}
             <button
-                className="flex justify-center font-semibold gap-2 items-center border-2 rounded-md p-4  hover:bg-(--main-bg-color) hover:text-white active:bg-black"
+                className=" border-gray-800 border-2 rounded-md p-4 border-x-0 border-b-0 hover:bg-gray-800 hover:text-rose-500 text-gray-500 cursor-pointer active:bg-black transition-colors"
                 onClick={() => {
                     addTask(column.id)
                 }}

@@ -52,7 +52,7 @@ const TaskCard = ({ task }: Props) => {
             <div
                 ref={setNodeRef}
                 style={style}
-                className="opacity-30 bg-gray-50 p-2.5 h-25 min-h-25 items-center flex text-left rounded-xl border-2 border-rose-500 cursor-grab relative"
+                className="opacity-50 bg-gray-800 p-2.5 h-25 min-h-25 items-center flex text-left rounded-xl border-2 border-rose-500 cursor-grab relative"
             />
         )
     }
@@ -64,11 +64,11 @@ const TaskCard = ({ task }: Props) => {
             {...attributes}
             {...listeners}
             onDoubleClick={toggleEditMode}
-            className="bg-white p-2.5 h-25 min-h-25 items-center flex text-left rounded-xl hover:ring-2 hover:ring-inset hover:ring-rose-500 cursor-grab relative task"
+            className="bg-gray-800 p-2.5 h-25 min-h-25 items-center flex text-left rounded-xl hover:ring-2 hover:ring-inset hover:ring-rose-500 cursor-grab relative task text-gray-100 shadow-sm"
         >
             {isEditModeOn ? (
                 <textarea
-                    className="h-[90%] w-full resize-none border-none rounded bg-transparent text-black focus:outline-none"
+                    className="h-[90%] w-full resize-none border-none rounded bg-transparent text-white focus:outline-none placeholder-gray-500"
                     value={newContent}
                     autoFocus
                     placeholder="Task Content here"
