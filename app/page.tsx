@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <main className="flex h-screen flex-col bg-gray-950 overflow-hidden">
       
-      {/* 2. HEADER: Stays at the top, never moves */}
+      {/* 1. HEADER: Stays at the top, never moves */}
       <header className="flex-none border-b border-gray-800 bg-gray-900/50 px-6 py-4 backdrop-blur-sm">
         <div className="flex items-center justify-between">
           <div>
@@ -21,7 +21,7 @@ export default function Home() {
         </div>
       </header>
 
-      {/* 3. SCROLLABLE AREA:  */}
+      {/* 2. SCROLLABLE AREA:  */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden bg-gray-950 p-6">
          <div className="h-full min-w-fit">
            <KanbanBoard />

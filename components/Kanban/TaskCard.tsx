@@ -13,7 +13,7 @@ const TaskCard = ({ task }: Props) => {
     const updateTask = useKanbanStore((state) => state.updateTask);
 
     const [isEditModeOn, setIsEditModeOn] = useState(false);
-    const [newContent, setNewContent] = useState(task.content);
+    const [newContent, setNewContent] = useState("");
 
     const {
         setNodeRef,

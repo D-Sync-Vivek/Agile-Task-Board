@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Kanban Board | Project Management",
+  title: "Agile Task Board",
   description: "A Drag and Drop Kanban board built with Next.js and dnd-kit",
   icons: {
     icon: "/favicon.ico", 

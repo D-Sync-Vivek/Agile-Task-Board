@@ -24,7 +24,7 @@ export const useKanbanStore = create<KanbanStore>()(
         set((state) => ({
           tasks: [
             ...state.tasks,
-            { id: generateRandomID(), columnId, content: "New Task" },
+            { id: generateRandomID(), columnId, content: "Double Click to edit" },
           ],
         })),
 
