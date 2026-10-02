@@ -13,10 +13,8 @@ import {
 import { Column, Task } from "@/types";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 
-export function usekanbanDnD() {
+export function useKanbanDnD() {
   const columns = useKanbanStore((state) => state.columns);
-  const addColumn = useKanbanStore((state) => state.addColumn);
-  const columnsIDs = columns.map((column) => column.id);
   const setColumns = useKanbanStore((state) => state.setColumns);
   const setTasks = useKanbanStore((state) => state.setTasks);
   const [activeColumn, setActiveColumn] = useState<Column | null>(null);

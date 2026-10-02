@@ -5,7 +5,7 @@ import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { SortableContext } from "@dnd-kit/sortable"
 import TaskCard from "./TaskCard"
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 
 const ColumnContainer = ({ column }: { column: Column }) => {
 

@@ -1,8 +1,8 @@
-import { Task, Id } from "@/types"
+import { Task } from "@/types"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { useKanbanStore } from "@/store/useKanbanStore"
-import { useRef, useState } from "react"
+import { useState } from "react"
 
 interface Props {
     task: Task;

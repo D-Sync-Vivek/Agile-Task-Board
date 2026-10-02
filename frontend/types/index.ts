@@ -12,7 +12,6 @@ export type Column ={
 }
 
 export interface KanbanStore{
-    updateColumnTitle: any;
     // 1. Primitive State
     columns: Column[];
     tasks: Task[];
@@ -20,6 +19,7 @@ export interface KanbanStore{
     // 2. Actions
     addColumn: (title: string) => void;
     deleteColumn: (id: Id) => void;
+    updateColumnTitle: (id: Id, title: string) => void;
 
     addTask: (columnId: Id) => void;
     deleteTask: (id: Id) => void;

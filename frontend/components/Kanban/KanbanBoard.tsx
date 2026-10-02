@@ -3,8 +3,8 @@ import { useKanbanStore } from "@/store/useKanbanStore"
 import { SortableContext } from "@dnd-kit/sortable";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { createPortal } from "react-dom";
-import { usekanbanDnD } from "@/hooks/useKanbanDnD";
-import { useEffect, useState } from "react";
+import { useKanbanDnD } from "@/hooks/useKanbanDnD";
+import { useIsMounted } from "@/hooks/useIsMounted";
 import ColumnContainer from "./ColumnContainer";
 import TaskCard from "./TaskCard";
 import BoardGuide from "./BoardGuide";
@@ -20,12 +20,8 @@ const KanbanBoard = () => {
         onDragOver,
         activeColumn,
         activeTask,
-    } = usekanbanDnD();
-    const [isMounted, setIsMounted] = useState(false)
-
-    useEffect(() => {
-        setIsMounted(true)
-    }, [])
+    } = useKanbanDnD();
+    const isMounted = useIsMounted()
 
     function callAddColumn() {
         addColumn(`Column ${columns.length + 1}`);

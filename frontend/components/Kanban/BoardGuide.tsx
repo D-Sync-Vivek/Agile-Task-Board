@@ -34,7 +34,7 @@ const BoardGuide = () => {
                     </li>
                 </ul>
 
-                <p className="mt-5 text-gray-400">Press "ctrl" + "i" to toggle the instructions</p>
+                <p className="mt-5 text-gray-400">Press &quot;ctrl&quot; + &quot;i&quot; to toggle the instructions</p>
             </div>
         </>
     )
