@@ -10,8 +10,9 @@
 //  - Delete behaviour is chosen per relation (see onDelete on each one), not blanket Cascade.
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs" // backend compiles to CommonJS
 }
 
 datasource db {
