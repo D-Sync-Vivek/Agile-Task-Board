@@ -18,14 +18,17 @@ const boardIdFromParams: BoardIdResolver = (req) => {
  * On success it sets req.boardMembership ({ boardId, role }) for the handler.
  *
  * Routes keyed by something other than the board id (/tasks/:taskId, /columns/:columnId, ...) pass a
- * `getBoardId` resolver that looks up the owning board; the resolver may throw its own 404
- * (e.g. TASK_NOT_FOUND). Those resolvers are added together with the routes that need them.
+ * `getBoardId` resolver that looks up the owning board (return undefined if the resource doesn't exist) plus a
+ * `notFound` factory. `notFound` is used BOTH when the resource doesn't exist and when the caller isn't a member of
+ * its board, so the two cases are indistinguishable (otherwise IDs could be probed). Without it, the error is
+ * BOARD_NOT_FOUND. A resolver may also throw its own error directly.
  */
 export function requireBoardPermission(
   permission: Permission,
-  options: { getBoardId?: BoardIdResolver } = {}
+  options: { getBoardId?: BoardIdResolver; notFound?: () => AppError } = {}
 ): RequestHandler {
   const getBoardId = options.getBoardId ?? boardIdFromParams;
+  const notFound = options.notFound ?? (() => new AppError(404, "BOARD_NOT_FOUND", "Board not found"));
 
   return async (req, _res, next) => {
     if (!req.user) {
@@ -34,11 +37,9 @@ export function requireBoardPermission(
     }
 
     const boardId = await getBoardId(req);
-    if (!boardId) {
-      throw new AppError(404, "BOARD_NOT_FOUND", "Board not found");
-    }
+    if (!boardId) throw notFound();
 
-    req.boardMembership = await assertBoardPermission(req.user.id, boardId, permission);
+    req.boardMembership = await assertBoardPermission(req.user.id, boardId, permission, { notFound });
     next();
   };
 }

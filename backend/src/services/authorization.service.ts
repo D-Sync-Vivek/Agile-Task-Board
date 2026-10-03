@@ -31,11 +31,14 @@ export async function getBoardMembership(userId: string, boardId: string): Promi
 export async function assertBoardPermission(
   userId: string,
   boardId: string,
-  permission: Permission
+  permission: Permission,
+  options: { notFound?: () => AppError } = {}
 ): Promise<BoardMembership> {
   const membership = await getBoardMembership(userId, boardId);
   if (!membership) {
-    throw new AppError(404, "BOARD_NOT_FOUND", "Board not found");
+    // Routes addressed by a child id (e.g. /columns/:id) pass their own notFound so a column the caller may not
+    // see is indistinguishable from one that doesn't exist.
+    throw options.notFound?.() ?? new AppError(404, "BOARD_NOT_FOUND", "Board not found");
   }
   if (!roleHasPermission(membership.role, permission)) {
     throw new AppError(403, "FORBIDDEN", "You do not have permission to perform this action");

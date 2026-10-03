@@ -207,6 +207,27 @@ describe("board authorization over HTTP", () => {
     expect(missing.body.error.code).toBe("THING_NOT_FOUND");
   });
 
+  it("with a notFound option, 'no such resource' and 'not your board' are indistinguishable", async () => {
+    const app2 = express();
+    app2.use(cookieParser());
+    const guard = requireBoardPermission("task:update", {
+      getBoardId: (req) => (req.params.thingId === "thing-1" ? boardId : undefined),
+      notFound: () => new AppError(404, "THING_NOT_FOUND", "Thing not found"),
+    });
+    app2.patch("/things/:thingId", requireAuth, guard, (_req, res) => {
+      res.json({ success: true });
+    });
+    app2.use(errorHandler);
+
+    const notMine = await request(app2).patch("/things/thing-1").set("Cookie", people.OUTSIDER.cookie);
+    const missing = await request(app2).patch("/things/nope").set("Cookie", people.OUTSIDER.cookie);
+    expect(notMine.status).toBe(404);
+    expect(notMine.body).toEqual(missing.body);
+    expect(notMine.body.error.code).toBe("THING_NOT_FOUND");
+    await request(app2).patch("/things/thing-1").set("Cookie", people.MEMBER.cookie).expect(200);
+    await request(app2).patch("/things/thing-1").set("Cookie", people.VIEWER.cookie).expect(403);
+  });
+
   describe("authorization service (usable outside HTTP, e.g. sockets)", () => {
     it("getBoardMembership returns the role or null", async () => {
       expect(await getBoardMembership(people.ADMIN.id, boardId)).toEqual({ boardId, role: "ADMIN" });
