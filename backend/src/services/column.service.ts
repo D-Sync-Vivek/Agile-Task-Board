@@ -1,30 +1,18 @@
 import { prisma } from "../config/prisma";
-import type { Prisma } from "../generated/prisma/client";
 import { AppError } from "../utils/AppError";
 import { isPrismaError } from "../utils/prismaErrors";
+import { lockBoard } from "./boardLock";
+import type { Tx } from "./boardLock";
 import type { CreateColumnInput, UpdateColumnInput } from "../validators/column.validator";
 
 export const columnNotFound = () => new AppError(404, "COLUMN_NOT_FOUND", "Column not found");
 
 const columnSelect = { id: true, boardId: true, title: true, position: true, createdAt: true, updatedAt: true } as const;
 
-type Tx = Prisma.TransactionClient;
-
 /** For requireBoardPermission: which board owns this column? undefined if there is no such column. */
 export async function resolveColumnBoardId(columnId: string): Promise<string | undefined> {
   const column = await prisma.column.findUnique({ where: { id: columnId }, select: { boardId: true } });
   return column?.boardId;
-}
-
-/**
- * Serialises every column-order mutation on one board. Column positions are a dense 0..n-1 sequence that is
- * rewritten as a whole, so two concurrent writers (create+create, reorder+delete, ...) could otherwise read the
- * same state and write duplicate or gapped positions. A row lock on the board makes them take turns; it is released
- * automatically when the transaction commits or rolls back.
- */
-async function lockBoard(tx: Tx, boardId: string): Promise<void> {
-  const rows = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM boards WHERE id = ${boardId} FOR UPDATE`;
-  if (rows.length === 0) throw new AppError(404, "BOARD_NOT_FOUND", "Board not found");
 }
 
 /** Rewrites positions to 0..n-1 in the given id order, touching only rows whose position actually changes. */

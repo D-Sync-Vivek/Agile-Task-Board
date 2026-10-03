@@ -10,6 +10,7 @@ import type { RateLimitOptions } from "./middleware/rateLimit";
 import { createAuthRouter } from "./routes/auth.routes";
 import { createBoardRouter } from "./routes/board.routes";
 import { createColumnRouter } from "./routes/column.routes";
+import { createTaskRouter } from "./routes/task.routes";
 
 export interface AppOptions {
   authRateLimit?: RateLimitOptions;
@@ -30,8 +31,9 @@ export function createApp(options: AppOptions = {}) {
     options.authRateLimit ?? { limit: env.AUTH_RATE_LIMIT_MAX, windowMs: env.AUTH_RATE_LIMIT_WINDOW_MINUTES * 60 * 1000 }
   );
   app.use("/api/auth", createAuthRouter(authLimiter));
-  // Column routes first: they match /api/boards/:id/columns..., so the board router never re-runs requireAuth for them.
+  // Column and task routes first: they match /api/boards/:id/columns..., so the board router never re-runs requireAuth for them.
   app.use("/api", createColumnRouter());
+  app.use("/api", createTaskRouter());
   app.use("/api/boards", createBoardRouter());
 
   app.use(notFoundHandler);

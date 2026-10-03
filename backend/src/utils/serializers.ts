@@ -1,5 +1,21 @@
 import type { TaskPriority } from "../generated/prisma/client";
 
+/** The columns of a task that are exposed through the API (single definition, shared by every task query). */
+export const taskSelect = {
+  id: true,
+  boardId: true,
+  columnId: true,
+  title: true,
+  description: true,
+  priority: true,
+  assigneeId: true,
+  createdById: true,
+  position: true,
+  dueDate: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
 interface TaskRow {
   id: string;
   boardId: string;
