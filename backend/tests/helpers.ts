@@ -29,3 +29,31 @@ export async function createBoardWithMembers(ownerId: string, others: { userId: 
   });
   return board.id;
 }
+
+export async function createColumn(boardId: string, title: string, position: number) {
+  return prisma.column.create({ data: { boardId, title, position } });
+}
+
+export async function createTask(opts: {
+  boardId: string;
+  columnId: string;
+  createdById: string;
+  title: string;
+  position: number;
+  assigneeId?: string;
+  dueDate?: string; // "YYYY-MM-DD"
+  priority?: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+}) {
+  return prisma.task.create({
+    data: {
+      boardId: opts.boardId,
+      columnId: opts.columnId,
+      createdById: opts.createdById,
+      title: opts.title,
+      position: opts.position,
+      assigneeId: opts.assigneeId,
+      priority: opts.priority,
+      dueDate: opts.dueDate ? new Date(opts.dueDate) : undefined,
+    },
+  });
+}

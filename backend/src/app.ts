@@ -8,6 +8,7 @@ import { originGuard } from "./middleware/originGuard";
 import { createAuthRateLimiter } from "./middleware/rateLimit";
 import type { RateLimitOptions } from "./middleware/rateLimit";
 import { createAuthRouter } from "./routes/auth.routes";
+import { createBoardRouter } from "./routes/board.routes";
 
 export interface AppOptions {
   authRateLimit?: RateLimitOptions;
@@ -28,6 +29,7 @@ export function createApp(options: AppOptions = {}) {
     options.authRateLimit ?? { limit: env.AUTH_RATE_LIMIT_MAX, windowMs: env.AUTH_RATE_LIMIT_WINDOW_MINUTES * 60 * 1000 }
   );
   app.use("/api/auth", createAuthRouter(authLimiter));
+  app.use("/api/boards", createBoardRouter());
 
   app.use(notFoundHandler);
   app.use(errorHandler);

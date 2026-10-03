@@ -11,7 +11,7 @@ export function validateBody(schema: z.ZodType): RequestHandler {
         422,
         "VALIDATION_ERROR",
         "Invalid request data",
-        result.error.issues.map((i) => ({ field: i.path.join("."), message: i.message }))
+        result.error.issues.map((i) => ({ field: i.path.join(".") || "body", message: i.message }))
       );
     }
     req.body = result.data;
