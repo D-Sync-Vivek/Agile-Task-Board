@@ -1,30 +1,7 @@
-export type Id = string | number
+import type { ColumnDto, TaskDto } from "@/types/api";
 
-export type Task = {
-    id: Id;
-    content: string;
-    columnId: Id;
-}
-
-export type Column ={
-    id: Id;
-    title: string;
-}
-
-export interface KanbanStore{
-    // 1. Primitive State
-    columns: Column[];
-    tasks: Task[];
-
-    // 2. Actions
-    addColumn: (title: string) => void;
-    deleteColumn: (id: Id) => void;
-    updateColumnTitle: (id: Id, title: string) => void;
-
-    addTask: (columnId: Id) => void;
-    deleteTask: (id: Id) => void;
-    updateTask: (id: Id, content: string) => void;
-
-    setTasks: (tasks: Task[]) => void;
-    setColumns: (columns: Column[]) => void;
-}
+// The UI works with the same shapes the backend returns, so there is no mapping layer to drift out of sync.
+// Ids are server-generated strings.
+export type Id = string;
+export type Task = TaskDto;
+export type Column = ColumnDto;

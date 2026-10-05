@@ -1,6 +1,7 @@
 "use client"
 import { Column } from "@/types"
-import { useKanbanStore } from "@/store/useKanbanStore"
+import { useBoardStore } from "@/store/useBoardStore"
+import { useCan } from "@/hooks/useCan"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { SortableContext } from "@dnd-kit/sortable"
@@ -12,11 +13,15 @@ const ColumnContainer = ({ column }: { column: Column }) => {
     const [isEditModeOn, setIsEditModeOn] = useState(false)
     const [title, setTitle] = useState("");
 
-    const addTask = useKanbanStore((state) => state.addTask);
-    const deleteColumn = useKanbanStore((state) => state.deleteColumn)
-    const updateTitle = useKanbanStore((state) => state.updateColumnTitle)
+    const addTask = useBoardStore((state) => state.addTask);
+    const deleteColumn = useBoardStore((state) => state.deleteColumn)
+    const renameColumn = useBoardStore((state) => state.renameColumn)
+    const isAddingTask = useBoardStore((state) => state.addingTaskIn.includes(column.id))
+    const canRename = useCan("column:update")
+    const canDeleteColumn = useCan("column:delete")
+    const canAddTask = useCan("task:create")
 
-    const tasks = useKanbanStore((state) => state.tasks)
+    const tasks = useBoardStore((state) => state.tasks)
 
     const columnTasks = useMemo(() => {
         return tasks.filter((tasks) => tasks.columnId === column.id);
@@ -39,7 +44,7 @@ const ColumnContainer = ({ column }: { column: Column }) => {
             type: "Column",
             column
         },
-        disabled: isEditModeOn
+        disabled: isEditModeOn || !canRename
     })
 
     const style = {
@@ -48,14 +53,14 @@ const ColumnContainer = ({ column }: { column: Column }) => {
     }
 
     const toggleEditMode = () => {
+        if (!canRename) return;
+        if (!isEditModeOn) setTitle(column.title); // start from the current title (it used to open empty)
         setIsEditModeOn((prev) => !prev);
     }
 
     const saveTitle = () => {
         setIsEditModeOn(false);
-        if (title !== column.title) {
-            updateTitle(column.id, title)
-        }
+        renameColumn(column.id, title) // the store ignores blank/unchanged titles
     }
 
     if (isDragging) {
@@ -104,8 +109,9 @@ const ColumnContainer = ({ column }: { column: Column }) => {
                         {column.title}
                     </div>}
 
-                {!isEditModeOn && (
+                {!isEditModeOn && canDeleteColumn && (
                     <button
+                        aria-label={`Delete column ${column.title}`}
                         onClick={(e) => {
                             e.stopPropagation();
                             deleteColumn(column.id)
@@ -127,14 +133,17 @@ const ColumnContainer = ({ column }: { column: Column }) => {
 
 
             {/* Column Footer (Add Task Button) */}
-            <button
-                className=" border-gray-800 border-2 rounded-md p-4 border-x-0 border-b-0 hover:bg-gray-800 hover:text-rose-500 text-gray-500 cursor-pointer active:bg-black transition-colors"
-                onClick={() => {
-                    addTask(column.id)
-                }}
-            >
-                + Add Task
-            </button>
+            {canAddTask && (
+                <button
+                    disabled={isAddingTask}
+                    className=" border-gray-800 border-2 rounded-md p-4 border-x-0 border-b-0 hover:bg-gray-800 hover:text-rose-500 text-gray-500 cursor-pointer active:bg-black transition-colors disabled:cursor-wait disabled:opacity-60"
+                    onClick={() => {
+                        addTask(column.id)
+                    }}
+                >
+                    + Add Task
+                </button>
+            )}
         </div>
 
     )

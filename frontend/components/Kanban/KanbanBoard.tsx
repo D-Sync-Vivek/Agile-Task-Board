@@ -1,5 +1,6 @@
 "use client"
-import { useKanbanStore } from "@/store/useKanbanStore"
+import { useBoardStore } from "@/store/useBoardStore"
+import { useCan } from "@/hooks/useCan"
 import { SortableContext } from "@dnd-kit/sortable";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { createPortal } from "react-dom";
@@ -10,21 +11,24 @@ import TaskCard from "./TaskCard";
 import BoardGuide from "./BoardGuide";
 
 const KanbanBoard = () => {
-    const columns = useKanbanStore((state) => state.columns)
-    const addColumn = useKanbanStore((state) => state.addColumn)
+    const columns = useBoardStore((state) => state.columns)
+    const addColumn = useBoardStore((state) => state.addColumn)
+    const addingColumn = useBoardStore((state) => state.addingColumn)
+    const canAddColumn = useCan("column:create")
     const columnsIDs = columns.map((column) => column.id)
     const {
         sensors,
         onDragStart,
         onDragEnd,
         onDragOver,
+        onDragCancel,
         activeColumn,
         activeTask,
     } = useKanbanDnD();
     const isMounted = useIsMounted()
 
     function callAddColumn() {
-        addColumn(`Column ${columns.length + 1}`);
+        addColumn(); // the store names it "Column N"
     }
 
     const dragOverlayContent = isMounted ? createPortal(
@@ -46,6 +50,7 @@ const KanbanBoard = () => {
                 onDragStart={onDragStart}
                 onDragEnd={onDragEnd}
                 onDragOver={onDragOver}
+                onDragCancel={onDragCancel}
             >
                 <div className="flex gap-4">
                     <SortableContext items={columnsIDs}>
@@ -54,14 +59,24 @@ const KanbanBoard = () => {
                         ))}
                     </SortableContext>
 
-                    <div className="fixed bottom-3 left-1/2 -translate-x-1/2">
-                        <button
-                            className="px-4 py-3 cursor-pointer rounded-lg bg-gray-900 hover:bg-gray-800 border-2 border-gray-800 ring-rose-500 hover:ring-2 text-white hover:scale-105 font-bold shadow-xl"
-                            onClick={callAddColumn}
-                        >
-                            +
-                        </button>
-                    </div>
+                    {columns.length === 0 && (
+                        <p className="mt-10 w-full text-center text-gray-400">
+                            No columns yet.{canAddColumn ? " Click + to create your first column." : ""}
+                        </p>
+                    )}
+
+                    {canAddColumn && (
+                        <div className="fixed bottom-3 left-1/2 -translate-x-1/2">
+                            <button
+                                aria-label="Add column"
+                                disabled={addingColumn}
+                                className="px-4 py-3 cursor-pointer rounded-lg bg-gray-900 hover:bg-gray-800 border-2 border-gray-800 ring-rose-500 hover:ring-2 text-white hover:scale-105 font-bold shadow-xl disabled:cursor-wait disabled:opacity-60"
+                                onClick={callAddColumn}
+                            >
+                                +
+                            </button>
+                        </div>
+                    )}
                 </div>
                 {dragOverlayContent}
             </DndContext>

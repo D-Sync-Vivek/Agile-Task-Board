@@ -1,4 +1,4 @@
-import { useKanbanStore } from "@/store/useKanbanStore";
+import { useBoardStore } from "@/store/useBoardStore";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useState } from "react";
 import {
@@ -14,9 +14,13 @@ import { Column, Task } from "@/types";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 
 export function useKanbanDnD() {
-  const columns = useKanbanStore((state) => state.columns);
-  const setColumns = useKanbanStore((state) => state.setColumns);
-  const setTasks = useKanbanStore((state) => state.setTasks);
+  const columns = useBoardStore((state) => state.columns);
+  const setColumns = useBoardStore((state) => state.setColumns);
+  const setTasks = useBoardStore((state) => state.setTasks);
+  const beginDrag = useBoardStore((state) => state.beginDrag);
+  const cancelDrag = useBoardStore((state) => state.cancelDrag);
+  const endDragTask = useBoardStore((state) => state.endDragTask);
+  const endDragColumn = useBoardStore((state) => state.endDragColumn);
   const [activeColumn, setActiveColumn] = useState<Column | null>(null);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
@@ -44,6 +48,7 @@ export function useKanbanDnD() {
 
   // On Drag Start
   function onDragStart(event: DragStartEvent) {
+    beginDrag(); // snapshot for rollback / cancel
     if (event.active.data.current?.type === "Column") {
       setActiveColumn(event.active.data.current.column);
       return;
@@ -59,12 +64,40 @@ export function useKanbanDnD() {
     setActiveColumn(null);
     setActiveTask(null);
     const { active, over } = event;
-    if (!over) return;
-    if (active.id === over.id) return;
+    const activeType = active.data.current?.type;
 
-    const oldIndex = columns.findIndex((col) => col.id === active.id);
-    const newIndex = columns.findIndex((col) => col.id === over.id);
-    setColumns(arrayMove(columns, oldIndex, newIndex));
+    // A dragged task has already been moved (live) by onDragOver; what is on screen now is what we save.
+    // This must happen before any early return: dropping a task on itself or outside any target still counts.
+    if (activeType === "Task") {
+      void endDragTask(String(active.id));
+      return;
+    }
+
+    if (activeType === "Column") {
+      if (over && active.id !== over.id) {
+        // Over another column, or over a task inside one (then use that task's column).
+        const overColumnId =
+          over.data.current?.type === "Task"
+            ? useBoardStore.getState().tasks.find((t) => t.id === over.id)?.columnId
+            : String(over.id);
+        const oldIndex = columns.findIndex((col) => col.id === active.id);
+        const newIndex = columns.findIndex((col) => col.id === overColumnId);
+        if (oldIndex !== -1 && newIndex !== -1) {
+          setColumns(arrayMove(columns, oldIndex, newIndex));
+        }
+      }
+      void endDragColumn();
+      return;
+    }
+
+    cancelDrag(); // unknown item type: leave nothing half-done
+  }
+
+  // On Drag Cancel (Escape): put everything back; nothing is sent to the server.
+  function onDragCancel() {
+    setActiveColumn(null);
+    setActiveTask(null);
+    cancelDrag();
   }
 
   // On Drag Over
@@ -83,7 +116,7 @@ export function useKanbanDnD() {
     if (!isActiveTask) return;
 
     //Read Live State to avoid closure staleness
-    const tasks = useKanbanStore.getState().tasks;
+    const tasks = useBoardStore.getState().tasks;
 
     // 1. Dropping a Task over another Task.
     if (isActiveTask && isOverTask) {
@@ -91,8 +124,10 @@ export function useKanbanDnD() {
       const overIndex = tasks.findIndex((t) => t.id === overId);
 
       if (tasks[activeIndex].columnId !== tasks[overIndex].columnId) {
-        tasks[activeIndex].columnId = tasks[overIndex].columnId;
-        return setTasks(arrayMove(tasks, activeIndex, overIndex - 1));
+        // New object instead of editing the old one in place (the rollback snapshot depends on that).
+        const moved = { ...tasks[activeIndex], columnId: tasks[overIndex].columnId };
+        const next = tasks.map((t, i) => (i === activeIndex ? moved : t));
+        return setTasks(arrayMove(next, activeIndex, overIndex - 1));
       }
       return setTasks(arrayMove(tasks, activeIndex, overIndex));
     }
@@ -104,8 +139,8 @@ export function useKanbanDnD() {
       const activeIndex = tasks.findIndex((t) => t.id === activeId);
 
       if (tasks[activeIndex].columnId !== overId) {
-        tasks[activeIndex].columnId = overId;
-        return setTasks(arrayMove(tasks, activeIndex, activeIndex));
+        const next = tasks.map((t, i) => (i === activeIndex ? { ...t, columnId: String(overId) } : t));
+        return setTasks(arrayMove(next, activeIndex, activeIndex));
       }
     }
   }
@@ -115,6 +150,7 @@ export function useKanbanDnD() {
     onDragStart,
     onDragOver,
     onDragEnd,
+    onDragCancel,
     activeColumn,
     activeTask,
   };

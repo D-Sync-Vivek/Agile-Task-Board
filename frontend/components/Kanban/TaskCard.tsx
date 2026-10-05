@@ -1,7 +1,8 @@
 import { Task } from "@/types"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { useKanbanStore } from "@/store/useKanbanStore"
+import { useBoardStore } from "@/store/useBoardStore"
+import { useCan } from "@/hooks/useCan"
 import { useState } from "react"
 
 interface Props {
@@ -9,8 +10,11 @@ interface Props {
 }
 
 const TaskCard = ({ task }: Props) => {
-    const deleteTask = useKanbanStore((state) => state.deleteTask);
-    const updateTask = useKanbanStore((state) => state.updateTask);
+    const deleteTask = useBoardStore((state) => state.deleteTask);
+    const updateTaskTitle = useBoardStore((state) => state.updateTaskTitle);
+    const canUpdate = useCan("task:update");
+    const canMove = useCan("task:move");
+    const canDelete = useCan("task:delete");
 
     const [isEditModeOn, setIsEditModeOn] = useState(false);
     const [newContent, setNewContent] = useState("");
@@ -28,7 +32,7 @@ const TaskCard = ({ task }: Props) => {
             type: "Task",
             task
         },
-        disabled: isEditModeOn
+        disabled: isEditModeOn || !canMove
     })
 
     const style = {
@@ -37,14 +41,14 @@ const TaskCard = ({ task }: Props) => {
     }
 
     const toggleEditMode = () => {
+        if (!canUpdate) return;
+        if (!isEditModeOn) setNewContent(task.title); // start from the current text (it used to open empty)
         setIsEditModeOn((prev) => !prev);
     }
 
     const saveTask = () => {
         setIsEditModeOn(false);
-        if (newContent !== task.content) {
-            updateTask(task.id, newContent);
-        }
+        updateTaskTitle(task.id, newContent); // the store ignores blank/unchanged text
     }
 
     if (isDragging) {
@@ -81,13 +85,14 @@ const TaskCard = ({ task }: Props) => {
                     onChange={(e) => setNewContent(e.target.value)}
                 ></textarea>
             ) : (
-                <p className="my-auto h-[90%] w-[80%] overflow-y-auto overflow-x-hidden whitespace-pre-wrap">{task.content}</p>
+                <p className="my-auto h-[90%] w-[80%] overflow-y-auto overflow-x-hidden whitespace-pre-wrap">{task.title}</p>
             )
             }
 
             {/* Conditionally rendering delete button only when Not editing. */}
-            {!isEditModeOn && (
+            {!isEditModeOn && canDelete && (
                 <button
+                    aria-label="Delete task"
                     onClick={(e) => {
                         e.stopPropagation();
                         deleteTask(task.id);

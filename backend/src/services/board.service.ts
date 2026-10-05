@@ -1,3 +1,4 @@
+import { ROLE_PERMISSIONS } from "../config/permissions";
 import { prisma } from "../config/prisma";
 import type { BoardRole } from "../generated/prisma/client";
 import { AppError } from "../utils/AppError";
@@ -96,7 +97,8 @@ export async function getBoardDetail(boardId: string, myRole: BoardRole) {
   });
   if (!board) throw boardNotFound();
 
-  return { ...board, myRole, tasks: board.tasks.map(toTaskDto) };
+  // The caller's permissions come from the one authoritative matrix, so the frontend never has to copy the policy.
+  return { ...board, myRole, myPermissions: [...ROLE_PERMISSIONS[myRole]], tasks: board.tasks.map(toTaskDto) };
 }
 
 export async function updateBoard(boardId: string, input: UpdateBoardInput, myRole: BoardRole) {
