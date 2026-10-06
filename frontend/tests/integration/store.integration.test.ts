@@ -57,9 +57,9 @@ describe("board store against the real backend", () => {
     expect(server.tasks.filter((t) => t.columnId === doing).map((t) => t.title)).toEqual(["Double Click to edit"]);
   });
 
-  it("persists an optimistic task edit and column rename (trimmed)", async () => {
+  it("persists a task edit (form save) and an optimistic column rename (trimmed)", async () => {
     const task = store().tasks.find((t) => t.title === "Seed A")!;
-    await store().updateTaskTitle(task.id, "  Seed A (edited)  ");
+    await store().updateTaskDetails(task.id, { title: "Seed A (edited)" });
     await store().renameColumn(doing, " In Progress ");
 
     const server = (await api.boards.get(boardId)).board;
@@ -76,15 +76,13 @@ describe("board store against the real backend", () => {
     useToastStore.setState({ toasts: [] });
   });
 
-  it("recovers when the server no longer has the task: rolls back, toasts and resyncs", async () => {
+  it("editing a task the server no longer has: the save fails with the API error and the board re-syncs", async () => {
     const task = store().tasks.find((t) => t.title === "Seed B")!;
     await api.tasks.delete(task.id); // someone else deleted it; our store doesn't know
 
-    await store().updateTaskTitle(task.id, "Edit a ghost");
+    await expect(store().updateTaskDetails(task.id, { title: "Edit a ghost" })).rejects.toMatchObject({ status: 404, code: "TASK_NOT_FOUND" });
     await new Promise((r) => setTimeout(r, 300)); // let the background resync finish
-    expect(toasts()).toEqual(["Task not found"]);
     expect(store().tasks.find((t) => t.id === task.id)).toBeUndefined(); // converged with the server
-    useToastStore.setState({ toasts: [] });
   });
 
   it("deletes a task and a column (with its tasks), persisted", async () => {

@@ -280,53 +280,6 @@ describe("deleteColumn (optimistic)", () => {
   });
 });
 
-describe("updateTaskTitle (optimistic)", () => {
-  it("updates immediately and merges only content fields from the server", async () => {
-    await loadFixture();
-    const d = deferred();
-    api.tasks.update.mockReturnValueOnce(d.promise);
-    const saving = store().updateTaskTitle("t1", " Write more tests ");
-    expect(store().tasks[0].title).toBe("Write more tests");
-
-    // Server copy has stale placement; the local column must not be overwritten by it.
-    d.resolve({ task: { ...makeTask("t1", "c9", "Write more tests", 7), updatedAt: "2026-10-05T00:00:00.000Z" } });
-    await saving;
-    expect(store().tasks[0]).toMatchObject({ title: "Write more tests", columnId: "c1", position: 0, updatedAt: "2026-10-05T00:00:00.000Z" });
-  });
-
-  it("rolls back on failure, and not over a newer edit", async () => {
-    await loadFixture();
-    api.tasks.update.mockRejectedValueOnce(apiError(422, "VALIDATION_ERROR", "Invalid request data"));
-    await store().updateTaskTitle("t1", "Nope");
-    expect(store().tasks[0].title).toBe("Write tests");
-
-    const slow = deferred();
-    api.tasks.update.mockReturnValueOnce(slow.promise);
-    const older = store().updateTaskTitle("t1", "Older");
-    api.tasks.update.mockResolvedValueOnce({ task: makeTask("t1", "c1", "Newer", 0) });
-    await store().updateTaskTitle("t1", "Newer");
-    slow.reject(apiError(500, "INTERNAL_ERROR"));
-    await older;
-    expect(store().tasks[0].title).toBe("Newer");
-  });
-
-  it("ignores blank and unchanged text", async () => {
-    await loadFixture();
-    await store().updateTaskTitle("t1", "   ");
-    await store().updateTaskTitle("t1", "Write tests");
-    expect(api.tasks.update).not.toHaveBeenCalled();
-  });
-
-  it("resyncs after a 409/404 so the UI converges with the server", async () => {
-    await loadFixture();
-    api.tasks.update.mockRejectedValueOnce(apiError(404, "TASK_NOT_FOUND", "Task not found"));
-    api.boards.get.mockResolvedValueOnce({ board: makeBoard({ tasks: [makeTask("t2", "c1", "Ship it", 0)] }) });
-    await store().updateTaskTitle("t1", "Gone");
-    await flush();
-    expect(store().tasks.map((t) => t.id)).toEqual(["t2"]);
-  });
-});
-
 describe("deleteTask (optimistic)", () => {
   it("removes immediately", async () => {
     await loadFixture();
@@ -386,7 +339,7 @@ describe("no-ops without a loaded board", () => {
     await store().addTask("c1");
     await store().renameColumn("c1", "x");
     await store().deleteColumn("c1");
-    await store().updateTaskTitle("t1", "x");
+    await store().updateTaskDetails("t1", { title: "x" });
     await store().deleteTask("t1");
     for (const group of Object.values(api)) for (const fn of Object.values(group)) expect(fn).not.toHaveBeenCalled();
   });

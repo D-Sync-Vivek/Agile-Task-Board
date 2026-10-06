@@ -183,31 +183,6 @@ describe("actions go through the API", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong");
   });
 
-  it("opens the task editor pre-filled, and saves the trimmed edit", async () => {
-    await ready();
-    api.tasks.update.mockResolvedValueOnce({ task: makeTask("t1", "c1", "Write more tests", 0) });
-    fireEvent.doubleClick(screen.getByText("Write tests"));
-    const box = await screen.findByPlaceholderText("Task Content here");
-    expect(box).toHaveValue("Write tests"); // used to open empty
-    const u = userEvent.setup();
-    await u.clear(box);
-    await u.type(box, "  Write more tests  ");
-    fireEvent.blur(box);
-
-    expect(await screen.findByText("Write more tests")).toBeInTheDocument();
-    expect(api.tasks.update).toHaveBeenCalledWith("t1", { title: "Write more tests" });
-  });
-
-  it("does not wipe a task when the editor is closed with blank text", async () => {
-    await ready();
-    fireEvent.doubleClick(screen.getByText("Write tests"));
-    const box = await screen.findByPlaceholderText("Task Content here");
-    await userEvent.clear(box);
-    fireEvent.blur(box);
-    expect(await screen.findByText("Write tests")).toBeInTheDocument();
-    expect(api.tasks.update).not.toHaveBeenCalled();
-  });
-
   it("renames a column from a pre-filled editor", async () => {
     await ready();
     api.columns.rename.mockResolvedValueOnce({ column: makeColumn("c1", "Backlog", 0) });

@@ -4,10 +4,12 @@ import { useParams } from "next/navigation";
 import { useEffect } from "react";
 import AppHeader from "@/components/AppHeader";
 import KanbanBoard from "@/components/Kanban/KanbanBoard";
+import TaskDetailPanel from "@/components/Kanban/TaskDetailPanel";
 import PageMessage from "@/components/ui/PageMessage";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useBoardStore } from "@/store/useBoardStore";
+import { useTaskPanelStore } from "@/store/useTaskPanelStore";
 
 const ROLE_LABEL = { OWNER: "Owner", ADMIN: "Admin", MEMBER: "Member", VIEWER: "Viewer (read-only)" } as const;
 
@@ -25,7 +27,10 @@ export default function BoardPage() {
     if (authStatus !== "authenticated") return;
     const controller = new AbortController();
     void loadBoard(boardId, { signal: controller.signal });
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      useTaskPanelStore.getState().close(); // never carry an open panel over to another board
+    };
   }, [authStatus, boardId, loadBoard]);
 
   if (authStatus === "error") {
@@ -72,6 +77,7 @@ export default function BoardPage() {
           <div className="h-full min-w-fit">
             <KanbanBoard />
           </div>
+          <TaskDetailPanel />
         </div>
       )}
     </main>

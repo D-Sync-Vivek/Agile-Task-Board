@@ -5,7 +5,7 @@ import { getErrorMessage, isApiError } from "@/lib/errors";
 import { useAuthStore } from "@/store/useAuthStore";
 import { toast } from "@/store/useToastStore";
 import type { Column, Id, Task } from "@/types";
-import type { BoardDetail } from "@/types/api";
+import type { BoardDetail, TaskPriority } from "@/types/api";
 
 /**
  * Client-side cache of ONE board. PostgreSQL (through the API) is the source of truth; nothing here is persisted.
@@ -21,6 +21,14 @@ import type { BoardDetail } from "@/types/api";
 export type BoardStatus = "idle" | "loading" | "ready" | "error";
 
 export type BoardMeta = Pick<BoardDetail, "id" | "name" | "description" | "ownerId" | "myRole" | "myPermissions" | "members">;
+
+export interface TaskDetailsChanges {
+  title?: string;
+  description?: string | null;
+  priority?: TaskPriority;
+  dueDate?: string | null;
+  assigneeId?: string | null;
+}
 
 export interface BoardLoadError {
   status: number;
@@ -45,7 +53,12 @@ interface BoardState {
   deleteColumn: (id: Id) => Promise<void>;
 
   addTask: (columnId: Id, title?: string) => Promise<void>;
-  updateTaskTitle: (id: Id, title: string) => Promise<void>;
+  /**
+   * Saves edits from the task detail form. Server-confirmed (the form needs the server's validation messages), and
+   * it throws the ApiError so the form can show them. Content fields and the assignee are separate endpoints, so
+   * they are saved in turn; if the second fails the first stays applied.
+   */
+  updateTaskDetails: (id: Id, changes: TaskDetailsChanges) => Promise<void>;
   deleteTask: (id: Id) => Promise<void>;
 
   /**
@@ -269,21 +282,26 @@ export const useBoardStore = create<BoardState>((set, get) => {
       }
     },
 
-    updateTaskTitle: async (id, rawTitle) => {
+    updateTaskDetails: async (id, changes) => {
       const board = get().board;
-      const title = rawTitle.trim();
-      const previous = get().tasks.find((t) => t.id === id);
-      if (!board || !previous || !title || previous.title === title) return;
+      if (!board || !get().tasks.some((t) => t.id === id)) return;
+      const { assigneeId, ...content } = changes;
+      const hasContent = Object.values(content).some((v) => v !== undefined);
 
-      set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, title } : t)) }));
       try {
-        const { task } = await api.tasks.update(id, { title });
-        // Take only the content fields from the server: column/position are managed separately (drag and drop).
-        set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, title: task.title, description: task.description, priority: task.priority, dueDate: task.dueDate, updatedAt: task.updatedAt } : t)) }));
+        if (hasContent) {
+          const { task } = await api.tasks.update(id, content);
+          // Take only the content fields: column/position are managed by drag and drop.
+          set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, title: task.title, description: task.description, priority: task.priority, dueDate: task.dueDate, updatedAt: task.updatedAt } : t)) }));
+        }
+        if (assigneeId !== undefined) {
+          const { task } = await api.tasks.assign(id, assigneeId);
+          set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, assigneeId: task.assigneeId, updatedAt: task.updatedAt } : t)) }));
+        }
       } catch (error) {
-        set((s) => ({ tasks: s.tasks.map((t) => (t.id === id && t.title === title ? { ...t, title: previous.title } : t)) }));
-        reportFailure(error, "Couldn't save the task.");
-        resyncIfStale(error, board.id);
+        if (isApiError(error, 401)) useAuthStore.getState().markAnonymous();
+        resyncIfStale(error, board.id); // e.g. the task was deleted elsewhere: the panel closes itself when it vanishes
+        throw error;
       }
     },
 
