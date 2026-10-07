@@ -9,6 +9,7 @@ export const api = {
   boards: { list: fn(), create: fn(), get: fn(), update: fn(), delete: fn() },
   columns: { create: fn(), rename: fn(), delete: fn(), reorder: fn() },
   tasks: { list: fn(), create: fn(), get: fn(), update: fn(), delete: fn(), move: fn(), assign: fn() },
+  comments: { list: fn(), create: fn(), update: fn(), delete: fn() },
 };
 
 export function resetApiMock() {

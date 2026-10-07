@@ -148,7 +148,7 @@ describe("GET /api/boards/:boardId", () => {
     expect(board).toMatchObject({ id: boardId, ownerId: alice.id, myRole: "VIEWER", myPermissions: ["board:view"] });
     const asOwner = (await api.get(alice, boardId)).body.data.board;
     expect(asOwner.myPermissions).toEqual(expect.arrayContaining(["board:view", "board:delete", "task:move", "member:manage"]));
-    expect(asOwner.myPermissions).toHaveLength(12);
+    expect(asOwner.myPermissions).toHaveLength(13);
     expect(board.columns.map((c: { title: string }) => c.title)).toEqual(["Todo", "Review", "Done"]);
     expect(board.tasks.filter((t: { columnId: string }) => t.columnId === todo.id).map((t: { title: string }) => t.title)).toEqual(["First", "Second", "Third"]);
 

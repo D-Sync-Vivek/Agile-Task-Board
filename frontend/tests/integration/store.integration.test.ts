@@ -26,7 +26,7 @@ describe("board store against the real backend", () => {
 
   beforeAll(async () => {
     const reachable = await fetch(`${API_URL}/api/auth/me`).then(() => true, () => false);
-    if (!reachable) throw new Error(`Backend not reachable at ${API_URL}. Start it first (cd backend && npm run dev).`);
+    if (!reachable) throw new Error(`Backend not reachable at ${API_URL}. Start it first (cd backend && AUTH_RATE_LIMIT_MAX=1000 npm run dev).`);
     clearCookies = installCookieJar();
 
     await useAuthStore.getState().register({ name: "Store Tester", email: `store-${stamp}@example.com`, password: "password123" });
@@ -43,7 +43,7 @@ describe("board store against the real backend", () => {
     expect(store().columns.map((c) => c.title)).toEqual(["Todo", "Doing"]);
     expect(titlesIn(todo)).toEqual(["Seed A", "Seed B"]);
     expect(store().board?.myRole).toBe("OWNER");
-    expect(store().board?.myPermissions).toHaveLength(12);
+    expect(store().board?.myPermissions).toHaveLength(13);
   });
 
   it("creates a column and a task, confirmed by the server", async () => {

@@ -3,6 +3,7 @@ import type {
   BoardDetail,
   BoardSummary,
   ColumnDto,
+  CommentDto,
   CreateBoardInput,
   CreateTaskInput,
   LoginInput,
@@ -53,6 +54,13 @@ export function createApi(client: ApiClient) {
       delete: (taskId: string) => client.delete<null>(`/api/tasks/${id(taskId)}`),
       move: (taskId: string, input: MoveTaskInput) => client.patch<MoveTaskResult>(`/api/tasks/${id(taskId)}/move`, input),
       assign: (taskId: string, assigneeId: string | null) => client.patch<{ task: TaskDto }>(`/api/tasks/${id(taskId)}/assign`, { assigneeId }),
+    },
+
+    comments: {
+      list: (taskId: string, options?: RequestOptions) => client.get<{ comments: CommentDto[] }>(`/api/tasks/${id(taskId)}/comments`, options),
+      create: (taskId: string, input: { content: string }) => client.post<{ comment: CommentDto }>(`/api/tasks/${id(taskId)}/comments`, input),
+      update: (commentId: string, input: { content: string }) => client.patch<{ comment: CommentDto }>(`/api/comments/${id(commentId)}`, input),
+      delete: (commentId: string) => client.delete<null>(`/api/comments/${id(commentId)}`),
     },
   };
 }

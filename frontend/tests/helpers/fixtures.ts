@@ -1,11 +1,11 @@
-import type { BoardDetail, ColumnDto, Permission, TaskDto } from "@/types/api";
+import type { BoardDetail, ColumnDto, CommentDto, Permission, TaskDto } from "@/types/api";
 import { ApiError } from "@/lib/api/client";
 
 const NOW = "2026-10-04T10:00:00.000Z";
 
 export const ALL_PERMISSIONS: Permission[] = [
   "board:view", "board:update", "board:delete", "member:manage", "column:create", "column:update",
-  "column:delete", "task:create", "task:update", "task:move", "task:delete", "comment:create",
+  "column:delete", "task:create", "task:update", "task:move", "task:delete", "comment:create", "comment:moderate",
 ];
 export const VIEWER_PERMISSIONS: Permission[] = ["board:view"];
 
@@ -16,6 +16,11 @@ export const makeColumn = (id: string, title: string, position: number): ColumnD
 export const makeTask = (id: string, columnId: string, title: string, position: number): TaskDto => ({
   id, boardId: "b1", columnId, title, description: null, priority: "MEDIUM", assigneeId: null,
   createdById: "u1", position, dueDate: null, createdAt: NOW, updatedAt: NOW,
+});
+
+export const makeComment = (id: string, authorId: string, authorName: string, content: string, over: Partial<CommentDto> = {}): CommentDto => ({
+  id, taskId: "t1", userId: authorId, content, createdAt: NOW, updatedAt: NOW, edited: false,
+  author: { id: authorId, name: authorName, avatar: null }, ...over,
 });
 
 export function makeBoard(overrides: Partial<BoardDetail> = {}): BoardDetail {

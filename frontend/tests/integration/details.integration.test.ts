@@ -25,7 +25,7 @@ describe("task detail saves against the real backend", () => {
 
   beforeAll(async () => {
     const reachable = await fetch(`${API_URL}/api/auth/me`).then(() => true, () => false);
-    if (!reachable) throw new Error(`Backend not reachable at ${API_URL}. Start it first (cd backend && npm run dev).`);
+    if (!reachable) throw new Error(`Backend not reachable at ${API_URL}. Start it first (cd backend && AUTH_RATE_LIMIT_MAX=1000 npm run dev).`);
     installCookieJar();
     await useAuthStore.getState().register({ name: "Details Tester", email: `details-${stamp}@example.com`, password: "password123" });
     myId = useAuthStore.getState().user!.id;

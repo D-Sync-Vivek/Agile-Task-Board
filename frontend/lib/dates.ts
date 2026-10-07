@@ -23,3 +23,22 @@ export function formatTimestamp(iso: string, { locale, timeZone }: FormatOptions
   if (Number.isNaN(date.getTime())) return iso;
   return date.toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone });
 }
+
+/**
+ * "Just now", "2 min ago", "3 h ago", "4 d ago", then a plain date. `now` is passed in (not read here) so the caller
+ * controls when the text refreshes and tests are deterministic. A timestamp slightly in the future (clock skew) reads
+ * as "Just now".
+ */
+export function formatRelativeTime(iso: string, now: number, { locale }: FormatOptions = {}): string {
+  const then = Date.parse(iso);
+  if (Number.isNaN(then)) return iso;
+  const seconds = Math.round((now - then) / 1000);
+  if (seconds < 45) return "Just now";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${Math.max(minutes, 1)} min ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} h ago`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return `${days} d ago`;
+  return new Date(then).toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" });
+}

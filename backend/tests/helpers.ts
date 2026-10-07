@@ -57,3 +57,8 @@ export async function createTask(opts: {
     },
   });
 }
+
+export async function createComment(taskId: string, userId: string, content: string, at?: Date) {
+  const when = at ?? new Date();
+  return prisma.comment.create({ data: { taskId, userId, content, createdAt: when, updatedAt: when } });
+}

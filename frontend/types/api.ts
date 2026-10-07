@@ -15,7 +15,8 @@ export type Permission =
   | "task:update"
   | "task:move"
   | "task:delete"
-  | "comment:create";
+  | "comment:create"
+  | "comment:moderate";
 
 export interface ApiUser {
   id: string;
@@ -71,6 +72,18 @@ export interface TaskDto {
 export interface TaskDetailDto extends TaskDto {
   createdBy: ApiUserSummary;
   assignee: ApiUserSummary | null;
+}
+
+export interface CommentDto {
+  id: string;
+  taskId: string;
+  userId: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  /** True once the text was changed after posting. */
+  edited: boolean;
+  author: ApiUserSummary;
 }
 
 export interface BoardMemberDto {

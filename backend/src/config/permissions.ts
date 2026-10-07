@@ -19,6 +19,7 @@ export const PERMISSIONS = [
   "task:move",
   "task:delete",
   "comment:create",
+  "comment:moderate", // delete other people's comments
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -34,6 +35,7 @@ const ADMIN: readonly Permission[] = [
   "column:update",
   "column:delete",
   "task:delete",
+  "comment:moderate",
 ];
 
 const OWNER: readonly Permission[] = [...ADMIN, "board:update", "board:delete"];

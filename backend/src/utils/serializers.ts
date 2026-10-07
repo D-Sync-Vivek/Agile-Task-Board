@@ -35,3 +35,30 @@ interface TaskRow {
 export function toTaskDto(task: TaskRow) {
   return { ...task, dueDate: task.dueDate ? task.dueDate.toISOString().slice(0, 10) : null };
 }
+
+/** The comment author's public info: no email, nothing sensitive. */
+export const commentSelect = {
+  id: true,
+  taskId: true,
+  userId: true,
+  content: true,
+  createdAt: true,
+  updatedAt: true,
+  user: { select: { id: true, name: true, avatar: true } },
+} as const;
+
+interface CommentRow {
+  id: string;
+  taskId: string;
+  userId: string;
+  content: string;
+  createdAt: Date;
+  updatedAt: Date;
+  user: { id: string; name: string; avatar: string | null };
+}
+
+/** API shape of a comment. `edited` is true once the text has been changed after posting. */
+export function toCommentDto(comment: CommentRow) {
+  const { user, ...rest } = comment;
+  return { ...rest, author: user, edited: comment.updatedAt.getTime() > comment.createdAt.getTime() };
+}

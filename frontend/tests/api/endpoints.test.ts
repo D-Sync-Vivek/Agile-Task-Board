@@ -39,6 +39,10 @@ describe("endpoint functions match the backend routes", () => {
     ["tasks.move", (a) => a.tasks.move("t1", { columnId: "c2", position: 3 }), { method: "PATCH", path: "/api/tasks/t1/move", body: { columnId: "c2", position: 3 } }],
     ["tasks.assign", (a) => a.tasks.assign("t1", "u1"), { method: "PATCH", path: "/api/tasks/t1/assign", body: { assigneeId: "u1" } }],
     ["tasks.assign (unassign)", (a) => a.tasks.assign("t1", null), { method: "PATCH", path: "/api/tasks/t1/assign", body: { assigneeId: null } }],
+    ["comments.list", (a) => a.comments.list("t1"), { method: "GET", path: "/api/tasks/t1/comments" }],
+    ["comments.create", (a) => a.comments.create("t1", { content: "Hi" }), { method: "POST", path: "/api/tasks/t1/comments", body: { content: "Hi" } }],
+    ["comments.update", (a) => a.comments.update("c1", { content: "Hi again" }), { method: "PATCH", path: "/api/comments/c1", body: { content: "Hi again" } }],
+    ["comments.delete", (a) => a.comments.delete("c1"), { method: "DELETE", path: "/api/comments/c1" }],
   ];
 
   it.each(cases)("%s", async (_name, call, expected) => {

@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import type { FormEvent, KeyboardEvent } from "react";
+import type { FormEvent } from "react";
 import { useCan } from "@/hooks/useCan";
 import { formatDueDate, formatTimestamp } from "@/lib/dates";
 import { ApiError } from "@/lib/api/client";
 import { getErrorMessage, getFieldErrors } from "@/lib/errors";
+import CommentsSection from "@/components/Kanban/CommentsSection";
 import { useBoardStore } from "@/store/useBoardStore";
 import type { TaskDetailsChanges } from "@/store/useBoardStore";
 import { useTaskPanelStore } from "@/store/useTaskPanelStore";
@@ -88,10 +89,12 @@ function PanelContent({ task }: { task: Task }) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [commentDraft, setCommentDraft] = useState(false); // an unsent comment counts as unsaved work
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const changes = diff(draft, task);
-  const dirty = Object.keys(changes).length > 0;
+  const dirty = Object.keys(changes).length > 0; // the task form has unsaved edits
+  const hasUnsaved = dirty || commentDraft;
 
   const nameOf = (userId: string | null) => (userId ? (members.find((m) => m.userId === userId)?.user.name ?? "Former member") : null);
 
@@ -111,33 +114,45 @@ function PanelContent({ task }: { task: Task }) {
   }
 
   function requestClose() {
-    if (dirty && !confirmDiscard) {
+    if (hasUnsaved && !confirmDiscard) {
       setConfirmDiscard(true); // first attempt warns, second discards
       return;
     }
     close();
   }
 
-  function onKeyDown(event: KeyboardEvent) {
-    if (event.key === "Escape") {
-      event.stopPropagation();
-      requestClose();
-      return;
+  // Escape and Tab are handled on the document, not on the dialog element: a focused button that becomes disabled
+  // (e.g. "Save changes" right after saving) stops receiving key events, which would otherwise leave Escape dead and
+  // let Tab escape into the page behind the modal.
+  useEffect(() => {
+    function onKeyDown(event: globalThis.KeyboardEvent) {
+      const dialogEl = dialogRef.current;
+      if (!dialogEl) return;
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        requestClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(dialogEl.querySelectorAll<HTMLElement>("button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])"));
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (!dialogEl.contains(active)) {
+        event.preventDefault(); // focus ended up outside (e.g. on <body>): bring it back in
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
     }
-    if (event.key !== "Tab" || !dialogRef.current) return;
-    // Keep Tab inside the dialog.
-    const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>("button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])"));
-    if (focusable.length === 0) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  });
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -177,7 +192,6 @@ function PanelContent({ task }: { task: Task }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="task-panel-heading"
-        onKeyDown={onKeyDown}
         className="relative h-full w-full max-w-md overflow-y-auto border-l border-gray-800 bg-gray-900 p-6 shadow-2xl"
       >
         <div className="mb-4 flex items-start justify-between gap-4">
@@ -187,7 +201,7 @@ function PanelContent({ task }: { task: Task }) {
 
         {confirmDiscard && (
           <p role="alert" className="mb-4 rounded border border-yellow-500/60 bg-yellow-950 px-3 py-2 text-sm text-yellow-100">
-            You have unsaved changes. Close again to discard them, or save first.
+            You have unsaved changes (or an unsent comment). Close again to discard them, or save first.
           </p>
         )}
         {formError && (
@@ -271,6 +285,8 @@ function PanelContent({ task }: { task: Task }) {
           <div className="flex justify-between gap-4"><dt>Created</dt><dd className="text-gray-200">{formatTimestamp(task.createdAt)}</dd></div>
           <div className="flex justify-between gap-4"><dt>Last updated</dt><dd className="text-gray-200">{formatTimestamp(task.updatedAt)}</dd></div>
         </dl>
+
+        <CommentsSection taskId={task.id} onDraftChange={setCommentDraft} />
       </div>
     </div>
   );

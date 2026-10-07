@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { formatDueDate, formatTimestamp } from "@/lib/dates";
+import { formatDueDate, formatRelativeTime, formatTimestamp } from "@/lib/dates";
 
 const originalTz = process.env.TZ;
 afterEach(() => {
@@ -36,5 +36,36 @@ describe("formatTimestamp (instants)", () => {
 
   it("returns the raw value for an invalid timestamp", () => {
     expect(formatTimestamp("not a date")).toBe("not a date");
+  });
+});
+
+describe("formatRelativeTime", () => {
+  const NOW = Date.parse("2026-10-04T12:00:00.000Z");
+  const ago = (seconds: number) => new Date(NOW - seconds * 1000).toISOString();
+
+  it.each([
+    [0, "Just now"],
+    [30, "Just now"],
+    [44, "Just now"],
+    [45, "1 min ago"],
+    [89, "1 min ago"],
+    [120, "2 min ago"],
+    [59 * 60, "59 min ago"],
+    [60 * 60, "1 h ago"],
+    [5 * 3600, "5 h ago"],
+    [23 * 3600, "23 h ago"],
+    [24 * 3600, "1 d ago"],
+    [3 * 86400, "3 d ago"],
+  ])("%is ago reads %j", (seconds, expected) => {
+    expect(formatRelativeTime(ago(seconds), NOW)).toBe(expected);
+  });
+
+  it("falls back to a plain date after a week", () => {
+    expect(formatRelativeTime("2026-09-01T12:00:00.000Z", NOW, { locale: "en-US" })).toBe("Sep 1, 2026");
+  });
+
+  it("treats a slightly-future timestamp (clock skew) as just now, and returns invalid input unchanged", () => {
+    expect(formatRelativeTime(new Date(NOW + 5000).toISOString(), NOW)).toBe("Just now");
+    expect(formatRelativeTime("garbage", NOW)).toBe("garbage");
   });
 });

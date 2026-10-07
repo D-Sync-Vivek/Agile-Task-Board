@@ -30,6 +30,7 @@ const EXPECTED: Record<BoardRole, readonly Permission[]> = {
     "task:move",
     "task:delete",
     "comment:create",
+    "comment:moderate", // admins may delete other people's comments; members may not
   ],
   MEMBER: ["board:view", "task:create", "task:update", "task:move", "comment:create"],
   VIEWER: ["board:view"],

@@ -1,7 +1,8 @@
 /**
  * Opt-in end-to-end check of lib/api against a REAL running backend + PostgreSQL (not part of `npm test`).
  *
- *   1. start the backend:   cd backend && npm run dev          (needs a migrated database)
+ *   1. start the backend:   cd backend && AUTH_RATE_LIMIT_MAX=1000 npm run dev   (needs a migrated database; the
+ *      suites register several users, more than the default login/register limit of 10 per 15 minutes allows)
  *   2. run this file:       cd frontend && API_URL=http://localhost:4000 npm run test:integration
  *
  * It registers a throw-away user with a random email each run and leaves its data in the dev database.
@@ -64,7 +65,7 @@ describe("lib/api against the real backend", () => {
 
   beforeAll(async () => {
     const res = await fetch(`${API_URL}/api/auth/me`).catch(() => undefined);
-    if (!res) throw new Error(`Backend not reachable at ${API_URL}. Start it first (cd backend && npm run dev).`);
+    if (!res) throw new Error(`Backend not reachable at ${API_URL}. Start it first (cd backend && AUTH_RATE_LIMIT_MAX=1000 npm run dev).`);
   });
 
   it("registers (normalising the email, never returning a password) and keeps the session in the cookie", async () => {

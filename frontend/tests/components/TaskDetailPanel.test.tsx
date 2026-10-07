@@ -51,6 +51,7 @@ beforeEach(() => {
   useToastStore.setState({ toasts: [] });
   useAuthStore.setState({ status: "authenticated", user: MEMBERS[0].user as never });
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+  api.comments.list.mockResolvedValue({ comments: [] }); // opening the panel loads the task's comments
 });
 
 async function ready(board = boardWith()) {
@@ -317,6 +318,29 @@ describe("closing", () => {
     await screen.findByRole("dialog", { name: "Task details" });
     await userEvent.keyboard("{Escape}");
     expect(details).toHaveFocus();
+  });
+
+  it("Escape still closes the panel right after saving (the focused Save button has just disabled itself)", async () => {
+    await ready();
+    api.tasks.update.mockResolvedValueOnce(saved({ title: "Add login" }));
+    await openTask("Implement authentication");
+    await userEvent.clear(within(dialog()).getByLabelText("Title"));
+    await userEvent.type(within(dialog()).getByLabelText("Title"), "Add login");
+    await userEvent.click(within(dialog()).getByRole("button", { name: "Save changes" }));
+    await within(dialog()).findByText("Saved");
+    expect(within(dialog()).getByRole("button", { name: "Save changes" })).toBeDisabled();
+
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("Tab brings focus back into the dialog if it ended up outside it", async () => {
+    await ready();
+    await openTask("Implement authentication");
+    (document.activeElement as HTMLElement).blur(); // focus falls to <body>
+    expect(dialog().contains(document.activeElement)).toBe(false);
+    await userEvent.tab();
+    expect(dialog().contains(document.activeElement)).toBe(true);
   });
 
   it("keeps Tab inside the dialog (wraps in both directions)", async () => {
