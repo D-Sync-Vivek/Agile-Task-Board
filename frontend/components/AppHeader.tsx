@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useBoardListStore } from "@/store/useBoardListStore";
@@ -9,9 +10,11 @@ interface Props {
   title: string;
   subtitle?: string;
   backHref?: string;
+  /** Page-specific controls (e.g. the board's "Activity" button), shown before the user name. */
+  actions?: ReactNode;
 }
 
-export default function AppHeader({ title, subtitle, backHref }: Props) {
+export default function AppHeader({ title, subtitle, backHref, actions }: Props) {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
@@ -38,6 +41,7 @@ export default function AppHeader({ title, subtitle, backHref }: Props) {
         </div>
 
         <div className="flex items-center gap-3">
+          {actions}
           {user && <span className="hidden text-sm text-gray-300 sm:inline">{user.name}</span>}
           <button onClick={handleLogout} className="rounded border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-gray-200 hover:bg-gray-700">
             Log out

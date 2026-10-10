@@ -1,8 +1,9 @@
 import { prisma } from "../config/prisma";
 import { AppError } from "../utils/AppError";
-import { isPrismaError } from "../utils/prismaErrors";
 import { taskSelect, toTaskDto } from "../utils/serializers";
 import type { AssignTaskInput, CreateTaskInput, MoveTaskInput, UpdateTaskInput } from "../validators/task.validator";
+import { recordActivity } from "./activity.service";
+import type { TaskFieldChanges } from "./activity.service";
 import { lockBoard } from "./boardLock";
 import type { Tx } from "./boardLock";
 import { columnNotFound } from "./column.service";
@@ -67,7 +68,7 @@ export function createTask(boardId: string, userId: string, input: CreateTaskInp
   return prisma.$transaction(async (tx) => {
     await lockBoard(tx, boardId);
 
-    const column = await tx.column.findFirst({ where: { id: input.columnId, boardId }, select: { id: true } });
+    const column = await tx.column.findFirst({ where: { id: input.columnId, boardId }, select: { id: true, title: true } });
     if (!column) throw columnNotFound(); // missing or belongs to another board: same answer
     if (input.assigneeId) await assertAssigneeIsMember(tx, boardId, input.assigneeId);
 
@@ -86,13 +87,24 @@ export function createTask(boardId: string, userId: string, input: CreateTaskInp
       },
       select: taskSelect,
     });
+    await recordActivity(tx, {
+      boardId,
+      userId,
+      action: "TASK_CREATED",
+      entityId: task.id,
+      metadata: { taskTitle: task.title, columnTitle: column.title },
+    });
     return toTaskDto(task);
   });
 }
 
-export async function updateTask(taskId: string, input: UpdateTaskInput) {
-  try {
-    const task = await prisma.task.update({
+/** Updates the task's own fields. Records ONE activity entry listing what actually changed (nothing if nothing did). */
+export function updateTask(boardId: string, taskId: string, userId: string, input: UpdateTaskInput) {
+  return prisma.$transaction(async (tx) => {
+    const before = await tx.task.findFirst({ where: { id: taskId, boardId }, select: taskSelect });
+    if (!before) throw taskNotFound();
+
+    const task = await tx.task.update({
       where: { id: taskId },
       data: {
         ...(input.title !== undefined && { title: input.title }),
@@ -102,36 +114,68 @@ export async function updateTask(taskId: string, input: UpdateTaskInput) {
       },
       select: taskSelect,
     });
+
+    const changes: TaskFieldChanges = {};
+    if (task.title !== before.title) changes.title = { from: before.title, to: task.title };
+    if (task.priority !== before.priority) changes.priority = { from: before.priority, to: task.priority };
+    if (task.description !== before.description) changes.description = true;
+    const dueBefore = toTaskDto(before).dueDate;
+    const dueAfter = toTaskDto(task).dueDate;
+    if (dueAfter !== dueBefore) changes.dueDate = { from: dueBefore, to: dueAfter };
+
+    if (Object.keys(changes).length > 0) {
+      await recordActivity(tx, { boardId, userId, action: "TASK_UPDATED", entityId: taskId, metadata: { taskTitle: task.title, changes } });
+    }
     return toTaskDto(task);
-  } catch (error) {
-    if (isPrismaError(error, "P2025")) throw taskNotFound();
-    throw error;
-  }
+  });
 }
 
-export async function assignTask(boardId: string, taskId: string, input: AssignTaskInput) {
-  if (input.assigneeId) await assertAssigneeIsMember(prisma, boardId, input.assigneeId);
-  try {
-    const task = await prisma.task.update({
+/** Assigns (or, with assigneeId null, unassigns). Records who it was assigned from/to; unchanged assignee = no entry. */
+export function assignTask(boardId: string, taskId: string, userId: string, input: AssignTaskInput) {
+  return prisma.$transaction(async (tx) => {
+    if (input.assigneeId) await assertAssigneeIsMember(tx, boardId, input.assigneeId);
+
+    const before = await tx.task.findFirst({
+      where: { id: taskId, boardId },
+      select: { assigneeId: true, assignee: { select: { id: true, name: true } } },
+    });
+    if (!before) throw taskNotFound();
+
+    const task = await tx.task.update({
       where: { id: taskId },
       data: { assigneeId: input.assigneeId },
       select: taskSelect,
     });
+
+    if (before.assigneeId !== task.assigneeId) {
+      const to = task.assigneeId ? await tx.user.findUnique({ where: { id: task.assigneeId }, select: { id: true, name: true } }) : null;
+      await recordActivity(tx, {
+        boardId,
+        userId,
+        action: "TASK_ASSIGNED",
+        entityId: taskId,
+        metadata: { taskTitle: task.title, from: before.assignee, to },
+      });
+    }
     return toTaskDto(task);
-  } catch (error) {
-    if (isPrismaError(error, "P2025")) throw taskNotFound();
-    throw error;
-  }
+  });
 }
 
 /** Deletes the task and closes the gap it leaves in its column, atomically. */
-export function deleteTask(boardId: string, taskId: string): Promise<void> {
+export function deleteTask(boardId: string, taskId: string, userId: string): Promise<void> {
   return prisma.$transaction(async (tx) => {
     await lockBoard(tx, boardId);
-    const task = await tx.task.findFirst({ where: { id: taskId, boardId }, select: { columnId: true } });
+    const task = await tx.task.findFirst({ where: { id: taskId, boardId }, select: { columnId: true, title: true, column: { select: { title: true } } } });
     if (!task) throw taskNotFound();
 
     await tx.task.delete({ where: { id: taskId } });
+    await recordActivity(tx, {
+      boardId,
+      userId,
+      action: "TASK_DELETED",
+      entityId: taskId,
+      metadata: { taskTitle: task.title, columnTitle: task.column.title },
+    });
 
     const remaining = await tx.task.findMany({ where: { columnId: task.columnId }, select: { id: true, position: true, columnId: true }, orderBy: byPosition });
     await writePositions(tx, task.columnId, remaining.map((t) => t.id), new Map(remaining.map((t) => [t.id, t])));
@@ -144,13 +188,13 @@ export function deleteTask(boardId: string, taskId: string): Promise<void> {
  * A position past the end means "last". Returns the moved task plus the new task order of every affected column
  * (what the frontend and, later, real-time subscribers need to reconcile).
  */
-export function moveTask(boardId: string, taskId: string, input: MoveTaskInput) {
+export function moveTask(boardId: string, taskId: string, userId: string, input: MoveTaskInput) {
   return prisma.$transaction(async (tx) => {
     await lockBoard(tx, boardId);
 
-    const task = await tx.task.findFirst({ where: { id: taskId, boardId }, select: { id: true, columnId: true, position: true } });
+    const task = await tx.task.findFirst({ where: { id: taskId, boardId }, select: { id: true, title: true, columnId: true, position: true, column: { select: { id: true, title: true } } } });
     if (!task) throw taskNotFound();
-    const target = await tx.column.findFirst({ where: { id: input.columnId, boardId }, select: { id: true } });
+    const target = await tx.column.findFirst({ where: { id: input.columnId, boardId }, select: { id: true, title: true } });
     if (!target) throw columnNotFound();
 
     const sourceColumnId = task.columnId;
@@ -179,6 +223,17 @@ export function moveTask(boardId: string, taskId: string, input: MoveTaskInput) 
       const leftIds = left.map((t) => t.id);
       await writePositions(tx, sourceColumnId, leftIds, new Map(left.map((t) => [t.id, t])));
       affected.push({ columnId: sourceColumnId, taskIds: leftIds });
+    }
+
+    // Only moves BETWEEN columns are history ("Todo → Done"); reordering inside a column is just housekeeping.
+    if (sourceColumnId !== targetColumnId) {
+      await recordActivity(tx, {
+        boardId,
+        userId,
+        action: "TASK_MOVED",
+        entityId: taskId,
+        metadata: { taskTitle: task.title, fromColumn: task.column, toColumn: { id: target.id, title: target.title } },
+      });
     }
 
     const moved = await tx.task.findUniqueOrThrow({ where: { id: taskId }, select: taskSelect });

@@ -1,4 +1,6 @@
 import type {
+  ActivityPage,
+  ActivityPageParams,
   ApiUser,
   BoardDetail,
   BoardSummary,
@@ -18,6 +20,14 @@ import type {
 import type { ApiClient, RequestOptions } from "./client";
 
 const id = encodeURIComponent;
+
+function pageQuery({ limit, cursor }: ActivityPageParams = {}): string {
+  const params = new URLSearchParams();
+  if (limit !== undefined) params.set("limit", String(limit));
+  if (cursor) params.set("cursor", cursor);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
 
 /** One function per backend endpoint. No state, no UI: stores/components call these. */
 export function createApi(client: ApiClient) {
@@ -61,6 +71,13 @@ export function createApi(client: ApiClient) {
       create: (taskId: string, input: { content: string }) => client.post<{ comment: CommentDto }>(`/api/tasks/${id(taskId)}/comments`, input),
       update: (commentId: string, input: { content: string }) => client.patch<{ comment: CommentDto }>(`/api/comments/${id(commentId)}`, input),
       delete: (commentId: string) => client.delete<null>(`/api/comments/${id(commentId)}`),
+    },
+
+    activity: {
+      forBoard: (boardId: string, params?: ActivityPageParams, options?: RequestOptions) =>
+        client.get<ActivityPage>(`/api/boards/${id(boardId)}/activity${pageQuery(params)}`, options),
+      forTask: (taskId: string, params?: ActivityPageParams, options?: RequestOptions) =>
+        client.get<ActivityPage>(`/api/tasks/${id(taskId)}/activity${pageQuery(params)}`, options),
     },
   };
 }

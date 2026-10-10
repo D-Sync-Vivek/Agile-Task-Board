@@ -43,6 +43,10 @@ describe("endpoint functions match the backend routes", () => {
     ["comments.create", (a) => a.comments.create("t1", { content: "Hi" }), { method: "POST", path: "/api/tasks/t1/comments", body: { content: "Hi" } }],
     ["comments.update", (a) => a.comments.update("c1", { content: "Hi again" }), { method: "PATCH", path: "/api/comments/c1", body: { content: "Hi again" } }],
     ["comments.delete", (a) => a.comments.delete("c1"), { method: "DELETE", path: "/api/comments/c1" }],
+    ["activity.forBoard", (a) => a.activity.forBoard("b1"), { method: "GET", path: "/api/boards/b1/activity" }],
+    ["activity.forBoard (paged)", (a) => a.activity.forBoard("b1", { limit: 20, cursor: "abc" }), { method: "GET", path: "/api/boards/b1/activity?limit=20&cursor=abc" }],
+    ["activity.forTask", (a) => a.activity.forTask("t1"), { method: "GET", path: "/api/tasks/t1/activity" }],
+    ["activity.forTask (first page only)", (a) => a.activity.forTask("t1", { limit: 5 }), { method: "GET", path: "/api/tasks/t1/activity?limit=5" }],
   ];
 
   it.each(cases)("%s", async (_name, call, expected) => {

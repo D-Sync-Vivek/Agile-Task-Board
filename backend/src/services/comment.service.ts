@@ -5,6 +5,7 @@ import { AppError } from "../utils/AppError";
 import { isPrismaError } from "../utils/prismaErrors";
 import { commentSelect, toCommentDto } from "../utils/serializers";
 import type { CreateCommentInput, UpdateCommentInput } from "../validators/comment.validator";
+import { recordActivity } from "./activity.service";
 import { taskNotFound } from "./task.service";
 
 export const commentNotFound = () => new AppError(404, "COMMENT_NOT_FOUND", "Comment not found");
@@ -36,13 +37,25 @@ export async function createComment(taskId: string, userId: string, input: Creat
   // differences between this server and the database.
   const now = new Date();
   try {
-    const comment = await prisma.comment.create({
-      data: { taskId, userId, content: input.content, createdAt: now, updatedAt: now },
-      select: commentSelect,
+    return await prisma.$transaction(async (tx) => {
+      const task = await tx.task.findUnique({ where: { id: taskId }, select: { boardId: true, title: true } });
+      if (!task) throw taskNotFound(); // deleted after the permission check
+
+      const comment = await tx.comment.create({
+        data: { taskId, userId, content: input.content, createdAt: now, updatedAt: now },
+        select: commentSelect,
+      });
+      await recordActivity(tx, {
+        boardId: task.boardId,
+        userId,
+        action: "COMMENT_ADDED",
+        entityId: comment.id,
+        metadata: { taskId, taskTitle: task.title },
+      });
+      return toCommentDto(comment);
     });
-    return toCommentDto(comment);
   } catch (error) {
-    if (isPrismaError(error, "P2003")) throw taskNotFound(); // the task was deleted after the permission check
+    if (isPrismaError(error, "P2003")) throw taskNotFound(); // deleted between the lookup and the insert
     throw error;
   }
 }

@@ -1,6 +1,6 @@
 import { prisma } from "../config/prisma";
 import { AppError } from "../utils/AppError";
-import { isPrismaError } from "../utils/prismaErrors";
+import { recordActivity } from "./activity.service";
 import { lockBoard } from "./boardLock";
 import type { Tx } from "./boardLock";
 import type { CreateColumnInput, UpdateColumnInput } from "../validators/column.validator";
@@ -27,35 +27,51 @@ async function writePositions(tx: Tx, current: { id: string; position: number }[
 }
 
 /** New columns are appended at the end. */
-export function createColumn(boardId: string, input: CreateColumnInput) {
+export function createColumn(boardId: string, userId: string, input: CreateColumnInput) {
   return prisma.$transaction(async (tx) => {
     await lockBoard(tx, boardId);
     const { _max } = await tx.column.aggregate({ where: { boardId }, _max: { position: true } });
-    return tx.column.create({
+    const column = await tx.column.create({
       data: { boardId, title: input.title, position: (_max.position ?? -1) + 1 },
       select: columnSelect,
     });
+    await recordActivity(tx, { boardId, userId, action: "COLUMN_CREATED", entityId: column.id, metadata: { columnTitle: column.title } });
+    return column;
   });
 }
 
-export async function renameColumn(columnId: string, input: UpdateColumnInput) {
-  try {
-    return await prisma.column.update({ where: { id: columnId }, data: { title: input.title }, select: columnSelect });
-  } catch (error) {
-    if (isPrismaError(error, "P2025")) throw columnNotFound(); // deleted after the permission check
-    throw error;
-  }
+/** Renames the column; a rename to the same title is not recorded. */
+export function renameColumn(boardId: string, columnId: string, userId: string, input: UpdateColumnInput) {
+  return prisma.$transaction(async (tx) => {
+    const before = await tx.column.findFirst({ where: { id: columnId, boardId }, select: { title: true } });
+    if (!before) throw columnNotFound(); // deleted after the permission check
+
+    const column = await tx.column.update({ where: { id: columnId }, data: { title: input.title }, select: columnSelect });
+    if (before.title !== column.title) {
+      await recordActivity(tx, { boardId, userId, action: "COLUMN_RENAMED", entityId: columnId, metadata: { from: before.title, to: column.title } });
+    }
+    return column;
+  });
 }
 
 /**
  * Deletes the column (its tasks go with it via ON DELETE CASCADE, matching the existing UI) and closes the gap so
  * positions stay 0..n-1 — all in one transaction.
  */
-export function deleteColumn(boardId: string, columnId: string): Promise<void> {
+export function deleteColumn(boardId: string, columnId: string, userId: string): Promise<void> {
   return prisma.$transaction(async (tx) => {
     await lockBoard(tx, boardId);
-    const { count } = await tx.column.deleteMany({ where: { id: columnId, boardId } });
-    if (count === 0) throw columnNotFound(); // already deleted by someone else
+    // Snapshot first: after the delete, neither the title nor the number of tasks that went with it can be read.
+    const column = await tx.column.findFirst({ where: { id: columnId, boardId }, select: { title: true, _count: { select: { tasks: true } } } });
+    if (!column) throw columnNotFound(); // already deleted by someone else
+    await tx.column.delete({ where: { id: columnId } });
+    await recordActivity(tx, {
+      boardId,
+      userId,
+      action: "COLUMN_DELETED",
+      entityId: columnId,
+      metadata: { columnTitle: column.title, taskCount: column._count.tasks },
+    });
 
     const remaining = await tx.column.findMany({
       where: { boardId },

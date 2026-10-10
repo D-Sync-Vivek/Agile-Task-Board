@@ -6,6 +6,7 @@ import { formatDueDate, formatTimestamp } from "@/lib/dates";
 import { ApiError } from "@/lib/api/client";
 import { getErrorMessage, getFieldErrors } from "@/lib/errors";
 import CommentsSection from "@/components/Kanban/CommentsSection";
+import TaskActivitySection from "@/components/Kanban/TaskActivitySection";
 import { useBoardStore } from "@/store/useBoardStore";
 import type { TaskDetailsChanges } from "@/store/useBoardStore";
 import { useTaskPanelStore } from "@/store/useTaskPanelStore";
@@ -287,6 +288,7 @@ function PanelContent({ task }: { task: Task }) {
         </dl>
 
         <CommentsSection taskId={task.id} onDraftChange={setCommentDraft} />
+        <TaskActivitySection taskId={task.id} updatedAt={task.updatedAt} />
       </div>
     </div>
   );

@@ -32,21 +32,21 @@ export const get: RequestHandler = async (req, res) => {
 };
 
 export const update: RequestHandler = async (req, res) => {
-  const task = await taskService.updateTask(taskIdOf(req), req.body as UpdateTaskInput);
+  const task = await taskService.updateTask(boardIdOf(req), taskIdOf(req), userIdOf(req), req.body as UpdateTaskInput);
   res.status(200).json({ success: true, data: { task } });
 };
 
 export const remove: RequestHandler = async (req, res) => {
-  await taskService.deleteTask(boardIdOf(req), taskIdOf(req));
+  await taskService.deleteTask(boardIdOf(req), taskIdOf(req), userIdOf(req));
   res.status(200).json({ success: true, data: null });
 };
 
 export const move: RequestHandler = async (req, res) => {
-  const result = await taskService.moveTask(boardIdOf(req), taskIdOf(req), req.body as MoveTaskInput);
+  const result = await taskService.moveTask(boardIdOf(req), taskIdOf(req), userIdOf(req), req.body as MoveTaskInput);
   res.status(200).json({ success: true, data: result });
 };
 
 export const assign: RequestHandler = async (req, res) => {
-  const task = await taskService.assignTask(boardIdOf(req), taskIdOf(req), req.body as AssignTaskInput);
+  const task = await taskService.assignTask(boardIdOf(req), taskIdOf(req), userIdOf(req), req.body as AssignTaskInput);
   res.status(200).json({ success: true, data: { task } });
 };

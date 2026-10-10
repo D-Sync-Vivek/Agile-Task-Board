@@ -10,8 +10,12 @@ export const api = {
   columns: { create: fn(), rename: fn(), delete: fn(), reorder: fn() },
   tasks: { list: fn(), create: fn(), get: fn(), update: fn(), delete: fn(), move: fn(), assign: fn() },
   comments: { list: fn(), create: fn(), update: fn(), delete: fn() },
+  activity: { forBoard: fn(), forTask: fn() },
 };
 
 export function resetApiMock() {
   for (const group of Object.values(api)) for (const mock of Object.values(group)) mock.mockReset();
+  // Tests that aren't about activity still render panels that load it: an empty feed keeps them focused on their own subject.
+  api.activity.forBoard.mockResolvedValue({ activities: [], nextCursor: null });
+  api.activity.forTask.mockResolvedValue({ activities: [], nextCursor: null });
 }

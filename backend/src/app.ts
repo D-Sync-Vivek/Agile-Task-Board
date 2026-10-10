@@ -7,6 +7,7 @@ import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { originGuard } from "./middleware/originGuard";
 import { createAuthRateLimiter } from "./middleware/rateLimit";
 import type { RateLimitOptions } from "./middleware/rateLimit";
+import { createActivityRouter } from "./routes/activity.routes";
 import { createAuthRouter } from "./routes/auth.routes";
 import { createBoardRouter } from "./routes/board.routes";
 import { createColumnRouter } from "./routes/column.routes";
@@ -36,6 +37,7 @@ export function createApp(options: AppOptions = {}) {
   app.use("/api", createColumnRouter());
   app.use("/api", createTaskRouter());
   app.use("/api", createCommentRouter());
+  app.use("/api", createActivityRouter());
   app.use("/api/boards", createBoardRouter());
 
   app.use(notFoundHandler);

@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import AppHeader from "@/components/AppHeader";
+import BoardActivityPanel from "@/components/Kanban/BoardActivityPanel";
 import KanbanBoard from "@/components/Kanban/KanbanBoard";
 import TaskDetailPanel from "@/components/Kanban/TaskDetailPanel";
 import PageMessage from "@/components/ui/PageMessage";
@@ -21,6 +22,7 @@ export default function BoardPage() {
   const error = useBoardStore((state) => state.error);
   const board = useBoardStore((state) => state.board);
   const loadBoard = useBoardStore((state) => state.loadBoard);
+  const [activityOpen, setActivityOpen] = useState(false);
 
   // Load on entry, cancel the in-flight request when leaving or switching boards.
   useEffect(() => {
@@ -29,6 +31,7 @@ export default function BoardPage() {
     void loadBoard(boardId, { signal: controller.signal });
     return () => {
       controller.abort();
+      setActivityOpen(false);
       useTaskPanelStore.getState().close(); // never carry an open panel over to another board
     };
   }, [authStatus, boardId, loadBoard]);
@@ -49,7 +52,15 @@ export default function BoardPage() {
   return (
     <main className="flex h-screen flex-col overflow-hidden bg-gray-950">
       {authStatus === "authenticated" && (
-        <AppHeader title={showBoard && board ? board.name : "Board"} subtitle={showBoard && board ? `Your role: ${ROLE_LABEL[board.myRole]}` : undefined} backHref="/" />
+        <AppHeader title={showBoard && board ? board.name : "Board"} subtitle={showBoard && board ? `Your role: ${ROLE_LABEL[board.myRole]}` : undefined} backHref="/"
+          actions={
+            showBoard && (
+              <button type="button" onClick={() => setActivityOpen(true)} className="rounded border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-gray-200 hover:bg-gray-700">
+                Activity
+              </button>
+            )
+          }
+        />
       )}
 
       {authStatus !== "authenticated" && <PageMessage role="status">Loading…</PageMessage>}
@@ -78,6 +89,7 @@ export default function BoardPage() {
             <KanbanBoard />
           </div>
           <TaskDetailPanel />
+          {activityOpen && <BoardActivityPanel boardId={boardId} onClose={() => setActivityOpen(false)} />}
         </div>
       )}
     </main>

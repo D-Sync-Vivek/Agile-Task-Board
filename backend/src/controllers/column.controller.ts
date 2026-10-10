@@ -4,23 +4,28 @@ import { AppError } from "../utils/AppError";
 import type { CreateColumnInput, ReorderColumnsInput, UpdateColumnInput } from "../validators/column.validator";
 
 // All handlers run behind requireAuth + requireBoardPermission, which set req.boardMembership.
+function userIdOf(req: Request): string {
+  if (!req.user) throw new AppError(401, "UNAUTHORIZED", "Authentication required");
+  return req.user.id;
+}
+
 function boardIdOf(req: Request): string {
   if (!req.boardMembership) throw new AppError(401, "UNAUTHORIZED", "Authentication required");
   return req.boardMembership.boardId;
 }
 
 export const create: RequestHandler = async (req, res) => {
-  const column = await columnService.createColumn(boardIdOf(req), req.body as CreateColumnInput);
+  const column = await columnService.createColumn(boardIdOf(req), userIdOf(req), req.body as CreateColumnInput);
   res.status(201).json({ success: true, data: { column } });
 };
 
 export const rename: RequestHandler = async (req, res) => {
-  const column = await columnService.renameColumn(String(req.params.columnId), req.body as UpdateColumnInput);
+  const column = await columnService.renameColumn(boardIdOf(req), String(req.params.columnId), userIdOf(req), req.body as UpdateColumnInput);
   res.status(200).json({ success: true, data: { column } });
 };
 
 export const remove: RequestHandler = async (req, res) => {
-  await columnService.deleteColumn(boardIdOf(req), String(req.params.columnId));
+  await columnService.deleteColumn(boardIdOf(req), String(req.params.columnId), userIdOf(req));
   res.status(200).json({ success: true, data: null });
 };
 

@@ -1,4 +1,4 @@
-import type { BoardDetail, ColumnDto, CommentDto, Permission, TaskDto } from "@/types/api";
+import type { ActivityDto, ActivityEvent, BoardDetail, ColumnDto, CommentDto, Permission, TaskDto } from "@/types/api";
 import { ApiError } from "@/lib/api/client";
 
 const NOW = "2026-10-04T10:00:00.000Z";
@@ -48,3 +48,8 @@ export function deferred<T = unknown>() {
 
 /** Lets pending promise callbacks run. */
 export const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+/** An activity entry; `event` gives the action + metadata (the shape depends on the action). */
+export const makeActivity = (id: string, event: ActivityEvent, over: Partial<Pick<ActivityDto, "createdAt" | "actor" | "entityId">> = {}): ActivityDto => ({
+  id, boardId: "b1", entityId: "t1", createdAt: NOW, actor: { id: "u2", name: "Mia Member", avatar: null }, ...over, ...event,
+});
