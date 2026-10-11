@@ -55,7 +55,7 @@ export default function BoardPage() {
   return (
     <main className="flex h-screen flex-col overflow-hidden bg-gray-950">
       {authStatus === "authenticated" && (
-        <AppHeader title={showBoard && board ? board.name : "Board"} subtitle={showBoard && board ? `Your role: ${ROLE_LABEL[board.myRole]}` : undefined} backHref="/"
+        <AppHeader title={showBoard && board ? board.name : "Board"} subtitle={showBoard && board ? `Your role: ${ROLE_LABEL[board.myRole]}` : undefined} backHref="/dashboard"
           actions={
             showBoard && (
               <>
@@ -78,7 +78,7 @@ export default function BoardPage() {
           {error?.status === 404 || error?.status === 403 ? (
             <>
               <p>Board not found.</p>
-              <Link href="/" className="rounded bg-gray-800 px-4 py-2 text-white hover:bg-gray-700">Back to my boards</Link>
+              <Link href="/dashboard" className="rounded bg-gray-800 px-4 py-2 text-white hover:bg-gray-700">Back to my boards</Link>
             </>
           ) : (
             <>

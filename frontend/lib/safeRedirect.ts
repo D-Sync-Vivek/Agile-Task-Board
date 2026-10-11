@@ -4,8 +4,8 @@
  * used as an open redirect.
  */
 export function safeNextPath(raw: string | null | undefined): string {
-  if (!raw) return "/";
-  if (!raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) return "/";
+  if (!raw) return "/dashboard";
+  if (!raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) return "/dashboard";
   if (/[\u0000-\u001f]/.test(raw)) return "/"; // control characters / header-injection tricks
   return raw;
 }
