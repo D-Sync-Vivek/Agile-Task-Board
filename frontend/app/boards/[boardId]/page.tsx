@@ -52,7 +52,7 @@ export default function BoardPage() {
   return (
     <main className="flex h-screen flex-col overflow-hidden bg-gray-950">
       {authStatus === "authenticated" && (
-        <AppHeader title={showBoard && board ? board.name : "Board"} subtitle={showBoard && board ? `Your role: ${ROLE_LABEL[board.myRole]}` : undefined} backHref="/"
+        <AppHeader title={showBoard && board ? board.name : "Board"} subtitle={showBoard && board ? `Your role: ${ROLE_LABEL[board.myRole]}` : undefined} backHref="/dasboard"
           actions={
             showBoard && (
               <button type="button" onClick={() => setActivityOpen(true)} className="rounded border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-gray-200 hover:bg-gray-700">
