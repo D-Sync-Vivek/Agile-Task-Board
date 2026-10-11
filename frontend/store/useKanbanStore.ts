@@ -1,9 +1,35 @@
 import { create } from "zustand";
-import { Id, KanbanStore } from "@/types";
 import { persist } from "zustand/middleware";
+import type { Id } from "@/types";
+
+// Legacy local-only board shapes. These are intentionally separate from the
+// server-backed Task/Column types in "@/types", which no longer have `content`.
+export interface LegacyColumn {
+  id: Id;
+  title: string;
+}
+
+export interface LegacyTask {
+  id: Id;
+  columnId: Id;
+  content: string;
+}
+
+export interface KanbanStore {
+  columns: LegacyColumn[];
+  tasks: LegacyTask[];
+  addColumn: (title: string) => void;
+  addTask: (columnId: Id) => void;
+  deleteColumn: (id: Id) => void;
+  deleteTask: (id: Id) => void;
+  setTasks: (tasks: LegacyTask[]) => void;
+  setColumns: (columns: LegacyColumn[]) => void;
+  updateColumnTitle: (id: Id, title: string) => void;
+  updateTask: (id: Id, content: string) => void;
+}
 
 function generateRandomID() {
-  if(typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"){
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
   }
   return Date.now().toString(36) + Math.random().toString(36).substring(2);
@@ -41,7 +67,7 @@ export const useKanbanStore = create<KanbanStore>()(
 
       setTasks: (newTasks) => set({ tasks: newTasks }),
       setColumns: (newCols) => set({ columns: newCols }),
-      updateColumnTitle: (id: Id, title: string) =>
+      updateColumnTitle: (id, title) =>
         set((state) => ({
           columns: state.columns.map((col) =>
             col.id === id ? { ...col, title } : col
