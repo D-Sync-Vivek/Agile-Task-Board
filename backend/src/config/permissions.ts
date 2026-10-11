@@ -50,3 +50,13 @@ export const ROLE_PERMISSIONS: Record<BoardRole, ReadonlySet<Permission>> = {
 export function roleHasPermission(role: BoardRole, permission: Permission): boolean {
   return ROLE_PERMISSIONS[role].has(permission);
 }
+
+/**
+ * Role hierarchy for managing members. The rule is ONE sentence, applied everywhere:
+ *   you may only grant roles, change roles and remove members that rank STRICTLY BELOW your own role.
+ * Consequences: an ADMIN manages MEMBERs and VIEWERs but not other ADMINs or the OWNER; nobody manages themselves;
+ * the OWNER can never be modified or removed (ownership transfer is not supported); nobody can grant OWNER.
+ */
+const ROLE_RANK: Record<BoardRole, number> = { VIEWER: 1, MEMBER: 2, ADMIN: 3, OWNER: 4 };
+
+export const isRoleBelow = (role: BoardRole, actorRole: BoardRole): boolean => ROLE_RANK[role] < ROLE_RANK[actorRole];

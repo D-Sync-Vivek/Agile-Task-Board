@@ -62,3 +62,12 @@ export function toCommentDto(comment: CommentRow) {
   const { user, ...rest } = comment;
   return { ...rest, author: user, edited: comment.updatedAt.getTime() > comment.createdAt.getTime() };
 }
+
+/** A board member as the API shows it. Email is visible to fellow members only (all routes sit behind board:view). */
+export const memberSelect = {
+  id: true,
+  userId: true,
+  role: true,
+  createdAt: true,
+  user: { select: { id: true, name: true, email: true, avatar: true } },
+} as const;

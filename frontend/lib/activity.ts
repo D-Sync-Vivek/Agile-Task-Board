@@ -60,8 +60,10 @@ export function describeActivity(entry: ActivityDto): string {
       return `added ${entry.metadata.memberName} as ${role(entry.metadata.role)}`;
     case "MEMBER_ROLE_CHANGED":
       return `changed ${entry.metadata.memberName} from ${role(entry.metadata.from)} to ${role(entry.metadata.to)}`;
-    case "MEMBER_REMOVED":
-      return `removed ${entry.metadata.memberName} from the board`;
+    case "MEMBER_REMOVED": {
+      const { memberName, unassignedTasks } = entry.metadata;
+      return unassignedTasks > 0 ? `removed ${memberName} from the board (${plural(unassignedTasks, "task")} unassigned)` : `removed ${memberName} from the board`;
+    }
 
     case "COMMENT_ADDED":
       return `commented on ${q(entry.metadata.taskTitle)}`;

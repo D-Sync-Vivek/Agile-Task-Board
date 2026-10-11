@@ -1,5 +1,8 @@
 import type {
   ActivityPage,
+  AddMemberInput,
+  AssignableRole,
+  BoardMemberDto,
   ActivityPageParams,
   ApiUser,
   BoardDetail,
@@ -71,6 +74,15 @@ export function createApi(client: ApiClient) {
       create: (taskId: string, input: { content: string }) => client.post<{ comment: CommentDto }>(`/api/tasks/${id(taskId)}/comments`, input),
       update: (commentId: string, input: { content: string }) => client.patch<{ comment: CommentDto }>(`/api/comments/${id(commentId)}`, input),
       delete: (commentId: string) => client.delete<null>(`/api/comments/${id(commentId)}`),
+    },
+
+    members: {
+      list: (boardId: string, options?: RequestOptions) => client.get<{ members: BoardMemberDto[] }>(`/api/boards/${id(boardId)}/members`, options),
+      add: (boardId: string, input: AddMemberInput) => client.post<{ member: BoardMemberDto }>(`/api/boards/${id(boardId)}/members`, input),
+      updateRole: (boardId: string, memberId: string, role: AssignableRole) =>
+        client.patch<{ member: BoardMemberDto }>(`/api/boards/${id(boardId)}/members/${id(memberId)}`, { role }),
+      /** `unassignedTasks`: how many of the removed member's tasks were left without an assignee. */
+      remove: (boardId: string, memberId: string) => client.delete<{ unassignedTasks: number }>(`/api/boards/${id(boardId)}/members/${id(memberId)}`),
     },
 
     activity: {

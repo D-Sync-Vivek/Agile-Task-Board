@@ -44,6 +44,13 @@ describe("describeActivity", () => {
     expect(text({ action: "COMMENT_ADDED", entityType: "COMMENT", metadata: { taskId: "t1", taskTitle: "Auth" } })).toBe("commented on “Auth”");
   });
 
+  it("describes member events, mentioning tasks that lost their assignee", () => {
+    expect(text({ action: "MEMBER_ADDED", entityType: "MEMBER", metadata: { memberName: "Rahul", role: "MEMBER" } })).toBe("added Rahul as Member");
+    expect(text({ action: "MEMBER_ROLE_CHANGED", entityType: "MEMBER", metadata: { memberName: "Rahul", from: "MEMBER", to: "ADMIN" } })).toBe("changed Rahul from Member to Admin");
+    expect(text({ action: "MEMBER_REMOVED", entityType: "MEMBER", metadata: { memberName: "Rahul", unassignedTasks: 0 } })).toBe("removed Rahul from the board");
+    expect(text({ action: "MEMBER_REMOVED", entityType: "MEMBER", metadata: { memberName: "Rahul", unassignedTasks: 2 } })).toBe("removed Rahul from the board (2 tasks unassigned)");
+  });
+
   it("never throws on an entry it doesn't fully understand", () => {
     const unknown = { ...makeActivity("a1", { action: "COMMENT_ADDED", entityType: "COMMENT", metadata: { taskId: "t", taskTitle: "x" } }), action: "SOMETHING_NEW" } as never;
     expect(describeActivity(unknown)).toBe("did something");

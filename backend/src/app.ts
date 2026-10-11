@@ -12,6 +12,7 @@ import { createAuthRouter } from "./routes/auth.routes";
 import { createBoardRouter } from "./routes/board.routes";
 import { createColumnRouter } from "./routes/column.routes";
 import { createCommentRouter } from "./routes/comment.routes";
+import { createMemberRouter } from "./routes/member.routes";
 import { createTaskRouter } from "./routes/task.routes";
 
 export interface AppOptions {
@@ -38,6 +39,7 @@ export function createApp(options: AppOptions = {}) {
   app.use("/api", createTaskRouter());
   app.use("/api", createCommentRouter());
   app.use("/api", createActivityRouter());
+  app.use("/api", createMemberRouter());
   app.use("/api/boards", createBoardRouter());
 
   app.use(notFoundHandler);

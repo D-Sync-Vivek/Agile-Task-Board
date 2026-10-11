@@ -134,7 +134,7 @@ export type ActivityEvent =
   | { action: "COLUMN_DELETED"; entityType: "COLUMN"; metadata: { columnTitle: string; taskCount: number } }
   | { action: "MEMBER_ADDED"; entityType: "MEMBER"; metadata: { memberName: string; role: BoardRole } }
   | { action: "MEMBER_ROLE_CHANGED"; entityType: "MEMBER"; metadata: { memberName: string; from: BoardRole; to: BoardRole } }
-  | { action: "MEMBER_REMOVED"; entityType: "MEMBER"; metadata: { memberName: string } }
+  | { action: "MEMBER_REMOVED"; entityType: "MEMBER"; metadata: { memberName: string; unassignedTasks: number } }
   | { action: "COMMENT_ADDED"; entityType: "COMMENT"; metadata: { taskId: string; taskTitle: string } };
 
 export type ActivityAction = ActivityEvent["action"];
@@ -164,7 +164,14 @@ export interface MoveTaskResult {
   columns: { columnId: string; taskIds: string[] }[];
 }
 
+/** Roles a member can be given. OWNER is never grantable: a board has exactly one owner (its creator). */
+export type AssignableRole = Exclude<BoardRole, "OWNER">;
+
 // Request bodies
+export interface AddMemberInput {
+  email: string;
+  role: AssignableRole;
+}
 export interface RegisterInput {
   name: string;
   email: string;

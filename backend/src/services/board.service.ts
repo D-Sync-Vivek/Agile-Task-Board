@@ -3,7 +3,7 @@ import { prisma } from "../config/prisma";
 import type { BoardRole } from "../generated/prisma/client";
 import { AppError } from "../utils/AppError";
 import { isPrismaError } from "../utils/prismaErrors";
-import { taskSelect, toTaskDto } from "../utils/serializers";
+import { memberSelect, taskSelect, toTaskDto } from "../utils/serializers";
 import type { CreateBoardInput, UpdateBoardInput } from "../validators/board.validator";
 
 const boardNotFound = () => new AppError(404, "BOARD_NOT_FOUND", "Board not found");
@@ -76,13 +76,7 @@ export async function getBoardDetail(boardId: string, myRole: BoardRole) {
       createdAt: true,
       updatedAt: true,
       members: {
-        select: {
-          id: true,
-          userId: true,
-          role: true,
-          createdAt: true,
-          user: { select: { id: true, name: true, email: true, avatar: true } },
-        },
+        select: memberSelect,
         orderBy: { createdAt: "asc" },
       },
       columns: {

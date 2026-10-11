@@ -29,7 +29,7 @@ export interface ActivityMetadataMap {
   COLUMN_DELETED: { columnTitle: string; taskCount: number };
   MEMBER_ADDED: { memberName: string; role: BoardRole };
   MEMBER_ROLE_CHANGED: { memberName: string; from: BoardRole; to: BoardRole };
-  MEMBER_REMOVED: { memberName: string };
+  MEMBER_REMOVED: { memberName: string; unassignedTasks: number };
   COMMENT_ADDED: { taskId: string; taskTitle: string };
 }
 

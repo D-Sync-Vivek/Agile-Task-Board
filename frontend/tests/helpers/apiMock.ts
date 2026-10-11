@@ -10,6 +10,7 @@ export const api = {
   columns: { create: fn(), rename: fn(), delete: fn(), reorder: fn() },
   tasks: { list: fn(), create: fn(), get: fn(), update: fn(), delete: fn(), move: fn(), assign: fn() },
   comments: { list: fn(), create: fn(), update: fn(), delete: fn() },
+  members: { list: fn(), add: fn(), updateRole: fn(), remove: fn() },
   activity: { forBoard: fn(), forTask: fn() },
 };
 
