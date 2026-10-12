@@ -101,7 +101,7 @@ describe("add (optimistic)", () => {
     api.comments.create.mockRejectedValueOnce(apiError(401, "UNAUTHORIZED"));
     await expect(store().add("t1", "x")).rejects.toBeTruthy();
     expect(useAuthStore.getState().status).toBe("anonymous");
-    expect(texts()).toEqual(["first", "second"]);
+    expect(texts()).toEqual([]); // the session ended, so the cached comments went with it (see store/sessionScope.ts)
   });
 
   it("a 404 makes the board re-check itself (the task may be gone)", async () => {
@@ -119,10 +119,12 @@ describe("add (optimistic)", () => {
     await loadTask();
     await store().add("t1", "   ");
     await store().add("t-other", "hello");
-    useAuthStore.setState({ user: null });
+    expect(texts()).toEqual(["first", "second"]); // the ignored calls changed nothing
+
+    useAuthStore.setState({ user: null }); // signed out: nothing may be posted, and the cache is cleared
     await store().add("t1", "hello");
     expect(api.comments.create).not.toHaveBeenCalled();
-    expect(texts()).toEqual(["first", "second"]);
+    expect(texts()).toEqual([]);
   });
 
   it("drops the response if the panel moved on while the request was in flight", async () => {

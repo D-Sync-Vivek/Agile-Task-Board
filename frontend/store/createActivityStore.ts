@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { ActivityDto, ActivityPage } from "@/types/api";
 import { getErrorMessage, isApiError } from "@/lib/errors";
+import { resetOnSessionChange } from "@/store/sessionScope";
 import { useAuthStore } from "@/store/useAuthStore";
 
 /**
@@ -52,7 +53,7 @@ export function createActivityStore(fetchPage: FetchActivityPage, belongsToScope
     if (isApiError(error, 401)) useAuthStore.getState().markAnonymous();
   };
 
-  return create<ActivityFeedState>((set, get) => ({
+  const useStore = create<ActivityFeedState>((set, get) => ({
     ...initial,
 
     load: async (scopeId, { signal } = {}) => {
@@ -129,4 +130,7 @@ export function createActivityStore(fetchPage: FetchActivityPage, belongsToScope
       set({ ...initial });
     },
   }));
+
+  resetOnSessionChange(() => useStore.getState().reset());
+  return useStore;
 }

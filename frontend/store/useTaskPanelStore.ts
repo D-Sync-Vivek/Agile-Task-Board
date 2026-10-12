@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { resetOnSessionChange } from "@/store/sessionScope";
 import type { Id } from "@/types";
 
 /** Which task's detail panel is open (UI state only; the task data itself lives in useBoardStore). */
@@ -13,3 +14,5 @@ export const useTaskPanelStore = create<TaskPanelState>((set) => ({
   open: (taskId) => set({ taskId }),
   close: () => set({ taskId: null }),
 }));
+
+resetOnSessionChange(() => useTaskPanelStore.getState().close());

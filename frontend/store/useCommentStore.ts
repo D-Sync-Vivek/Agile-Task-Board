@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { api } from "@/lib/api";
 import { getErrorMessage, isApiError } from "@/lib/errors";
+import { resetOnSessionChange } from "@/store/sessionScope";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useBoardStore } from "@/store/useBoardStore";
 import { toast } from "@/store/useToastStore";
@@ -185,3 +186,5 @@ export const useCommentStore = create<CommentState>((set, get) => ({
     }
   },
 }));
+
+resetOnSessionChange(() => useCommentStore.getState().reset());

@@ -3,6 +3,7 @@ import { api } from "@/lib/api";
 import { reconcileColumns, reconcileTasks, restoreColumnOrder, restoreTaskPlacement, sameLocation, taskLocation } from "@/lib/boardLayout";
 import type { AffectedColumn } from "@/lib/boardLayout";
 import { getErrorMessage, isApiError } from "@/lib/errors";
+import { resetOnSessionChange } from "@/store/sessionScope";
 import { useAuthStore } from "@/store/useAuthStore";
 import { toast } from "@/store/useToastStore";
 import type { Column, Id, Task } from "@/types";
@@ -492,3 +493,5 @@ export const useBoardStore = create<BoardState>((set, get) => {
     setTasks: (tasks) => set({ tasks }),
   };
 });
+
+resetOnSessionChange(() => useBoardStore.getState().reset());

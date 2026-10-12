@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { api } from "@/lib/api";
 import { getErrorMessage, isApiError } from "@/lib/errors";
+import { resetOnSessionChange } from "@/store/sessionScope";
 import { useAuthStore } from "@/store/useAuthStore";
 import type { BoardSummary } from "@/types/api";
 
@@ -48,3 +49,5 @@ export const useBoardListStore = create<BoardListState>((set) => ({
     set({ boards: [], status: "idle", error: null });
   },
 }));
+
+resetOnSessionChange(() => useBoardListStore.getState().reset());
