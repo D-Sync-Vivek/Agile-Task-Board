@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type ToastKind = "error" | "success";
+export type ToastKind = "error" | "success" | "info";
 export interface Toast {
   id: number;
   kind: ToastKind;
@@ -31,4 +31,5 @@ export const useToastStore = create<ToastState>((set, get) => ({
 export const toast = {
   error: (message: string) => useToastStore.getState().push("error", message),
   success: (message: string) => useToastStore.getState().push("success", message),
+  info: (message: string) => useToastStore.getState().push("info", message),
 };

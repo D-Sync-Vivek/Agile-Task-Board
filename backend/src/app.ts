@@ -5,6 +5,7 @@ import helmet from "helmet";
 import { env } from "./config/env";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { originGuard } from "./middleware/originGuard";
+import { activityOutbox } from "./sockets/outbox";
 import { createAuthRateLimiter } from "./middleware/rateLimit";
 import type { RateLimitOptions } from "./middleware/rateLimit";
 import { createActivityRouter } from "./routes/activity.routes";
@@ -29,6 +30,7 @@ export function createApp(options: AppOptions = {}) {
   app.use(express.json({ limit: "100kb" }));
   app.use(cookieParser());
   app.use(originGuard);
+  app.use(activityOutbox);
 
   const authLimiter = createAuthRateLimiter(
     options.authRateLimit ?? { limit: env.AUTH_RATE_LIMIT_MAX, windowMs: env.AUTH_RATE_LIMIT_WINDOW_MINUTES * 60 * 1000 }

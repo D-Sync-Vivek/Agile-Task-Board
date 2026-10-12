@@ -79,7 +79,7 @@ export function updateMemberRole(boardId: string, actorId: string, memberId: str
  * Removes a member. Tasks assigned to them become unassigned in the same transaction (an assignee must always be a
  * board member); their comments stay, attributed to them. Returns how many tasks were unassigned.
  */
-export function removeMember(boardId: string, actorId: string, memberId: string): Promise<{ unassignedTasks: number }> {
+export function removeMember(boardId: string, actorId: string, memberId: string): Promise<{ userId: string; unassignedTasks: number }> {
   return prisma.$transaction(async (tx) => {
     await lockBoard(tx, boardId);
     const actorRole = await currentManagerRole(tx, boardId, actorId);
@@ -94,6 +94,6 @@ export function removeMember(boardId: string, actorId: string, memberId: string)
       entityId: target.userId,
       metadata: { memberName: target.user.name, unassignedTasks: count },
     });
-    return { unassignedTasks: count };
+    return { userId: target.userId, unassignedTasks: count };
   });
 }

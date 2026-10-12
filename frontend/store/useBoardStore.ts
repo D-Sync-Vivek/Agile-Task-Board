@@ -1,11 +1,12 @@
 import { create } from "zustand";
 import { api } from "@/lib/api";
 import { reconcileColumns, reconcileTasks, restoreColumnOrder, restoreTaskPlacement, sameLocation, taskLocation } from "@/lib/boardLayout";
+import type { AffectedColumn } from "@/lib/boardLayout";
 import { getErrorMessage, isApiError } from "@/lib/errors";
 import { useAuthStore } from "@/store/useAuthStore";
 import { toast } from "@/store/useToastStore";
 import type { Column, Id, Task } from "@/types";
-import type { BoardDetail, TaskPriority } from "@/types/api";
+import type { BoardDetail, BoardMemberDto, TaskPriority } from "@/types/api";
 
 /**
  * Client-side cache of ONE board. PostgreSQL (through the API) is the source of truth; nothing here is persisted.
@@ -35,6 +36,21 @@ export interface BoardLoadError {
   code: string;
   message: string;
 }
+
+/** A change made by SOMEONE ELSE, as announced by the server (see lib/realtime/handlers.ts). */
+export type RemoteChange =
+  | { type: "task-created"; task: Task }
+  | { type: "task-edited"; task: Task } // fields or assignee; never the task's place on the board
+  | { type: "task-moved"; task: Task; columns: AffectedColumn[] }
+  | { type: "task-deleted"; taskId: Id }
+  | { type: "column-created"; column: Column }
+  | { type: "column-renamed"; column: Column }
+  | { type: "column-deleted"; columnId: Id }
+  | { type: "columns-reordered"; columns: Column[] }
+  | { type: "board-edited"; name: string; description: string | null }
+  | { type: "member-added"; member: BoardMemberDto }
+  | { type: "member-changed"; member: BoardMemberDto }
+  | { type: "member-removed"; userId: Id; memberId: Id };
 
 interface BoardState {
   board: BoardMeta | null;
@@ -69,6 +85,14 @@ interface BoardState {
   cancelDrag: () => void; // Escape: put everything back, no request
   endDragTask: (taskId: Id) => Promise<void>; // persist the task's final column + position
   endDragColumn: () => Promise<void>; // persist the final column order
+
+  /**
+   * Applies a change somebody else made. Idempotent (applying it twice, or after a re-fetch already contains it, is
+   * harmless). While this user is dragging or a move is in flight, changes that would reshuffle the board are NOT
+   * applied: that would yank cards from under the cursor and fight the optimistic update. Instead the board is
+   * marked stale and re-fetched as soon as the drag/move is over (the same mechanism failed moves use).
+   */
+  applyRemote: (change: RemoteChange) => void;
 
   /** Local-only setters used by the drag-and-drop hook for the live preview. */
   setColumns: (columns: Column[]) => void;
@@ -379,6 +403,89 @@ export const useBoardStore = create<BoardState>((set, get) => {
         rollback: () => set((s) => ({ columns: restoreColumnOrder(s.columns, snapshot.columns) })),
         failure: "Couldn't reorder the columns.",
       });
+    },
+
+    applyRemote: (change) => {
+      const board = get().board;
+      if (!board) return;
+      const busy = dragging || pendingLayoutWrites > 0;
+      /** The change can't be applied cleanly right now (or we're missing context): re-read the board instead. */
+      const resync = () => {
+        if (busy) needsResync = true;
+        else void get().loadBoard(board.id, { silent: true });
+      };
+      const hasColumn = (id: Id) => get().columns.some((c) => c.id === id);
+      const hasTask = (id: Id) => get().tasks.some((t) => t.id === id);
+
+      switch (change.type) {
+        // ---- content only: never touches layout, so it is safe at any time
+        case "task-edited": {
+          const { task } = change;
+          if (!hasTask(task.id)) return resync(); // we never saw this task (missed its creation)
+          set((s) => ({
+            tasks: s.tasks.map((t) =>
+              t.id === task.id
+                ? { ...t, title: task.title, description: task.description, priority: task.priority, dueDate: task.dueDate, assigneeId: task.assigneeId, updatedAt: task.updatedAt }
+                : t
+            ),
+          }));
+          return;
+        }
+        case "column-renamed":
+          set((s) => ({ columns: s.columns.map((c) => (c.id === change.column.id ? { ...c, title: change.column.title, updatedAt: change.column.updatedAt } : c)) }));
+          return;
+        case "board-edited":
+          set((s) => (s.board ? { board: { ...s.board, name: change.name, description: change.description } } : s));
+          return;
+        case "member-added":
+          set((s) => (s.board && !s.board.members.some((m) => m.id === change.member.id) ? { board: { ...s.board, members: [...s.board.members, change.member] } } : s));
+          return;
+        case "member-changed":
+          set((s) => (s.board ? { board: { ...s.board, members: s.board.members.map((m) => (m.id === change.member.id ? change.member : m)) } } : s));
+          return;
+        case "member-removed":
+          // The server unassigned their tasks in the same transaction; mirror that.
+          set((s) => ({
+            board: s.board ? { ...s.board, members: s.board.members.filter((m) => m.id !== change.memberId) } : s.board,
+            tasks: s.tasks.map((t) => (t.assigneeId === change.userId ? { ...t, assigneeId: null } : t)),
+          }));
+          return;
+
+        // ---- layout: needs a calm board
+        case "task-created": {
+          if (busy) return void (needsResync = true);
+          const { task } = change;
+          if (hasTask(task.id)) return;
+          if (!hasColumn(task.columnId)) return resync();
+          set((s) => ({ tasks: [...s.tasks, task] }));
+          return;
+        }
+        case "task-moved": {
+          if (busy) return void (needsResync = true);
+          const { task, columns } = change;
+          if (!hasColumn(task.columnId)) return resync();
+          // reconcileTasks only places tasks it already has: add this one first if we had missed its creation.
+          set((s) => ({ tasks: reconcileTasks(hasTask(task.id) ? s.tasks : [...s.tasks, task], columns, task) }));
+          return;
+        }
+        case "task-deleted":
+          if (busy) return void (needsResync = true);
+          set((s) => ({ tasks: s.tasks.filter((t) => t.id !== change.taskId) })); // the gap closes by itself: order is array order
+          return;
+        case "column-created":
+          if (busy) return void (needsResync = true);
+          if (!hasColumn(change.column.id)) set((s) => ({ columns: [...s.columns, change.column] }));
+          return;
+        case "column-deleted":
+          if (busy) return void (needsResync = true);
+          set((s) => ({ columns: s.columns.filter((c) => c.id !== change.columnId), tasks: s.tasks.filter((t) => t.columnId !== change.columnId) }));
+          return;
+        case "columns-reordered":
+          if (busy) return void (needsResync = true);
+          if (change.columns.some((c) => !hasColumn(c.id))) return resync(); // a column we don't have: order alone can't fix that
+          set((s) => ({ columns: reconcileColumns(s.columns, change.columns) }));
+          return;
+      }
     },
 
     setColumns: (columns) => set({ columns }),

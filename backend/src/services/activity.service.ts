@@ -1,5 +1,6 @@
 import { prisma } from "../config/prisma";
 import type { ActivityAction, ActivityEntityType, BoardRole, Prisma } from "../generated/prisma/client";
+import { queueActivity } from "../sockets/outbox";
 import type { Tx } from "./boardLock";
 
 /**
@@ -69,7 +70,10 @@ export async function recordActivity<A extends ActivityAction>(
     },
     select: activitySelect,
   });
-  return toActivityDto(row);
+  const dto = toActivityDto(row);
+  // Not broadcast here: the surrounding transaction may still roll back. The controller flushes after it committed.
+  queueActivity(dto);
+  return dto;
 }
 
 const activitySelect = {

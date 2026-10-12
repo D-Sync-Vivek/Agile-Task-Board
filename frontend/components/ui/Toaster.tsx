@@ -13,7 +13,7 @@ export default function Toaster() {
           key={t.id}
           role={t.kind === "error" ? "alert" : "status"}
           className={`pointer-events-auto flex items-start justify-between gap-3 rounded-lg border px-4 py-3 text-sm shadow-xl ${
-            t.kind === "error" ? "border-red-500/60 bg-red-950 text-red-100" : "border-emerald-500/60 bg-emerald-950 text-emerald-100"
+            t.kind === "error" ? "border-red-500/60 bg-red-950 text-red-100" : t.kind === "info" ? "border-sky-500/60 bg-sky-950 text-sky-100" : "border-emerald-500/60 bg-emerald-950 text-emerald-100"
           }`}
         >
           <span>{t.message}</span>

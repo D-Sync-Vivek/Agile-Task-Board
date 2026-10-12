@@ -21,6 +21,11 @@ export interface CommentView extends CommentDto {
 
 type Status = "idle" | "loading" | "ready" | "error";
 
+/** A comment change made by SOMEONE ELSE (pushed by the server). */
+export type RemoteCommentChange =
+  | { type: "created" | "updated"; comment: CommentDto }
+  | { type: "deleted"; commentId: Id; taskId: Id };
+
 interface CommentState {
   taskId: Id | null;
   comments: CommentView[];
@@ -33,12 +38,17 @@ interface CommentState {
   add: (taskId: Id, content: string) => Promise<void>;
   edit: (commentId: Id, content: string) => Promise<void>;
   remove: (commentId: Id) => Promise<void>;
+  /** Applies a change somebody else made to the open task's comments. Idempotent; ignored for other tasks. */
+  receive: (change: RemoteCommentChange) => void;
+  /** Re-reads the list without blanking it (after a reconnect). Comments still being posted are kept. */
+  refresh: () => Promise<void>;
 }
 
 const initial = { taskId: null, comments: [] as CommentView[], status: "idle" as Status, error: null };
 
 let loadSeq = 0;
 let tempSeq = 0;
+let changedWhileLoading = false; // something was pushed while the first load was in flight: that load may predate it
 
 const isPending = (c: CommentView | undefined) => !c || c.pending === true;
 
@@ -62,11 +72,16 @@ export const useCommentStore = create<CommentState>((set, get) => ({
 
   load: async (taskId, { signal } = {}) => {
     const seq = ++loadSeq;
+    changedWhileLoading = false;
     set({ ...initial, taskId, status: "loading" });
     try {
       const { comments } = await api.comments.list(taskId, { signal });
       if (seq !== loadSeq || signal?.aborted) return;
       set({ comments, status: "ready", error: null });
+      if (changedWhileLoading) {
+        changedWhileLoading = false;
+        void get().refresh();
+      }
     } catch (error) {
       if (seq !== loadSeq || signal?.aborted) return;
       if (isApiError(error, 401)) useAuthStore.getState().markAnonymous();
@@ -77,6 +92,38 @@ export const useCommentStore = create<CommentState>((set, get) => ({
   reset: () => {
     loadSeq++;
     set({ ...initial });
+  },
+
+  receive: (change) => {
+    const { taskId, status } = get();
+    const eventTaskId = change.type === "deleted" ? change.taskId : change.comment.taskId;
+    if (!taskId || eventTaskId !== taskId) return;
+    if (status === "loading") {
+      changedWhileLoading = true;
+      return;
+    }
+    if (status !== "ready") return;
+
+    if (change.type === "deleted") {
+      set((s) => ({ comments: s.comments.filter((c) => c.id !== change.commentId) }));
+    } else {
+      const { comment } = change;
+      set((s) => (s.comments.some((c) => c.id === comment.id) ? { comments: s.comments.map((c) => (c.id === comment.id ? comment : c)) } : { comments: [...s.comments, comment] }));
+    }
+  },
+
+  refresh: async () => {
+    const { taskId, status } = get();
+    if (!taskId || status !== "ready") return;
+    const seq = loadSeq;
+    try {
+      const { comments } = await api.comments.list(taskId);
+      if (seq !== loadSeq || get().taskId !== taskId) return;
+      set((s) => ({ comments: [...comments, ...s.comments.filter((c) => c.pending)] }));
+    } catch (error) {
+      if (isApiError(error, 401)) useAuthStore.getState().markAnonymous();
+      // any other failure: keep what we have
+    }
   },
 
   add: async (taskId, rawContent) => {

@@ -5,9 +5,11 @@ import { useEffect, useState } from "react";
 import AppHeader from "@/components/AppHeader";
 import BoardSettingsPanel from "@/components/Kanban/BoardSettingsPanel";
 import BoardActivityPanel from "@/components/Kanban/BoardActivityPanel";
+import LiveIndicator from "@/components/Kanban/LiveIndicator";
 import KanbanBoard from "@/components/Kanban/KanbanBoard";
 import TaskDetailPanel from "@/components/Kanban/TaskDetailPanel";
 import PageMessage from "@/components/ui/PageMessage";
+import { useBoardRealtime } from "@/hooks/useBoardRealtime";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useBoardStore } from "@/store/useBoardStore";
@@ -39,6 +41,9 @@ export default function BoardPage() {
     };
   }, [authStatus, boardId, loadBoard]);
 
+  // Live updates, for as long as this board is open and the user is signed in.
+  useBoardRealtime(boardId, authStatus === "authenticated");
+
   if (authStatus === "error") {
     return (
       <main className="flex h-screen flex-col bg-gray-950">
@@ -55,10 +60,11 @@ export default function BoardPage() {
   return (
     <main className="flex h-screen flex-col overflow-hidden bg-gray-950">
       {authStatus === "authenticated" && (
-        <AppHeader title={showBoard && board ? board.name : "Board"} subtitle={showBoard && board ? `Your role: ${ROLE_LABEL[board.myRole]}` : undefined} backHref="/dashboard"
+        <AppHeader title={showBoard && board ? board.name : "Board"} subtitle={showBoard && board ? `Your role: ${ROLE_LABEL[board.myRole]}` : undefined} backHref="/"
           actions={
             showBoard && (
               <>
+                <LiveIndicator />
                 <button type="button" onClick={() => setActivityOpen(true)} className="rounded border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-gray-200 hover:bg-gray-700">
                   Activity
                 </button>
@@ -78,7 +84,7 @@ export default function BoardPage() {
           {error?.status === 404 || error?.status === 403 ? (
             <>
               <p>Board not found.</p>
-              <Link href="/dashboard" className="rounded bg-gray-800 px-4 py-2 text-white hover:bg-gray-700">Back to my boards</Link>
+              <Link href="/" className="rounded bg-gray-800 px-4 py-2 text-white hover:bg-gray-700">Back to my boards</Link>
             </>
           ) : (
             <>

@@ -68,12 +68,18 @@ export function signAuthToken(userId: string): string {
   });
 }
 
-/** Returns the user id from a valid token, or null for anything invalid/expired/tampered. */
-export function verifyAuthToken(token: string): string | null {
+/** Who a valid token belongs to and when it stops being valid, or null for anything invalid/expired/tampered. */
+export function decodeAuthToken(token: string): { userId: string; expiresAt: Date } | null {
   try {
     const payload = jwt.verify(token, env.JWT_SECRET, { algorithms: ["HS256"] });
-    return typeof payload === "object" && typeof payload.sub === "string" ? payload.sub : null;
+    if (typeof payload !== "object" || typeof payload.sub !== "string" || typeof payload.exp !== "number") return null;
+    return { userId: payload.sub, expiresAt: new Date(payload.exp * 1000) };
   } catch {
     return null;
   }
+}
+
+/** Returns the user id from a valid token, or null for anything invalid/expired/tampered. */
+export function verifyAuthToken(token: string): string | null {
+  return decodeAuthToken(token)?.userId ?? null;
 }

@@ -129,3 +129,30 @@ describe("createApiClient: errors", () => {
     expect(error).toMatchObject({ code: "INVALID_RESPONSE" });
   });
 });
+
+describe("createApiClient: live-connection id", () => {
+  const send = async (getSocketId: (() => string | undefined) | undefined, body?: unknown) => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ success: true, data: null }));
+    const client = createApiClient({ baseUrl: "http://api.test", fetchImpl: fetchImpl as unknown as typeof fetch, getSocketId });
+    await (body === undefined ? client.get("/x") : client.post("/x", body));
+    return (fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].headers;
+  };
+
+  it("sends X-Socket-Id when this tab has a live connection (so the server doesn't echo our own change back)", async () => {
+    expect(await send(() => "abc123")).toEqual({ "X-Socket-Id": "abc123" });
+    expect(await send(() => "abc123", { a: 1 })).toEqual({ "Content-Type": "application/json", "X-Socket-Id": "abc123" });
+  });
+
+  it("sends nothing extra without one, and reads the id at request time (it changes when the socket reconnects)", async () => {
+    expect(await send(undefined)).toBeUndefined();
+    expect(await send(() => undefined)).toBeUndefined();
+    let id = "first";
+    const fetchImpl = vi.fn(async () => jsonResponse({ success: true, data: null }));
+    const client = createApiClient({ baseUrl: "http://api.test", fetchImpl: fetchImpl as unknown as typeof fetch, getSocketId: () => id });
+    await client.get("/x");
+    id = "second";
+    await client.get("/x");
+    const ids = fetchImpl.mock.calls.map((c) => ((c as unknown as [string, RequestInit])[1].headers as Record<string, string>)["X-Socket-Id"]);
+    expect(ids).toEqual(["first", "second"]);
+  });
+});

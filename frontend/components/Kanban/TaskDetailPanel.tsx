@@ -51,6 +51,9 @@ function diff(draft: Draft, task: Task): TaskDetailsChanges {
   return changes;
 }
 
+const FIELD_LABEL: Record<keyof Draft, string> = { title: "Title", description: "Description", priority: "Priority", dueDate: "Due date", assigneeId: "Assignee" };
+const FIELDS = Object.keys(FIELD_LABEL) as (keyof Draft)[];
+
 const inputClass = "w-full rounded border border-gray-700 bg-gray-950 px-3 py-2 text-white placeholder-gray-500 focus:border-rose-500 focus:outline-none disabled:opacity-60";
 
 function Field({ id, label, error, children }: { id: string; label: string; error?: string; children: React.ReactNode }) {
@@ -85,6 +88,27 @@ function PanelContent({ task }: { task: Task }) {
   const canEdit = useCan("task:update");
 
   const [draft, setDraft] = useState<Draft>(() => toDraft(task));
+
+  // The task can change underneath an open form (somebody else edits it, live). The draft must follow, or saving
+  // would silently overwrite their change with a stale value: fields the user hasn't touched adopt the new value;
+  // fields the user HAS edited keep their edit, and are remembered so the form can warn about the conflict.
+  // (Adjusting state while rendering, the pattern React recommends for "state that depends on a changed prop".)
+  const [seenTask, setSeenTask] = useState(task);
+  const [remoteChanged, setRemoteChanged] = useState<ReadonlySet<keyof Draft>>(new Set());
+  if (task !== seenTask) {
+    const before = toDraft(seenTask);
+    const after = toDraft(task);
+    const merged = { ...draft };
+    const conflicts = new Set(remoteChanged);
+    for (const field of FIELDS) {
+      if (before[field] === after[field]) continue;
+      if (draft[field] === before[field]) (merged[field] as string) = after[field]; // untouched: take their value
+      else if (draft[field] !== after[field]) conflicts.add(field); // edited, and now different from theirs
+    }
+    setSeenTask(task);
+    setDraft(merged);
+    setRemoteChanged(conflicts);
+  }
   const [pending, setPending] = useState(false);
   const [saved, setSaved] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -96,6 +120,8 @@ function PanelContent({ task }: { task: Task }) {
   const changes = diff(draft, task);
   const dirty = Object.keys(changes).length > 0; // the task form has unsaved edits
   const hasUnsaved = dirty || commentDraft;
+
+  const conflictLabels = FIELDS.filter((f) => remoteChanged.has(f) && draft[f] !== toDraft(task)[f]).map((f) => FIELD_LABEL[f]);
 
   const nameOf = (userId: string | null) => (userId ? (members.find((m) => m.userId === userId)?.user.name ?? "Former member") : null);
 
@@ -170,6 +196,7 @@ function PanelContent({ task }: { task: Task }) {
       await updateTaskDetails(task.id, changes);
       const latest = useBoardStore.getState().tasks.find((t) => t.id === task.id);
       if (latest) setDraft(toDraft(latest)); // show the saved (trimmed) values
+      setRemoteChanged(new Set());
       setSaved(true);
     } catch (error) {
       const fields = getFieldErrors(error);
@@ -203,6 +230,11 @@ function PanelContent({ task }: { task: Task }) {
         {confirmDiscard && (
           <p role="alert" className="mb-4 rounded border border-yellow-500/60 bg-yellow-950 px-3 py-2 text-sm text-yellow-100">
             You have unsaved changes (or an unsent comment). Close again to discard them, or save first.
+          </p>
+        )}
+        {conflictLabels.length > 0 && (
+          <p role="status" className="mb-4 rounded border border-sky-500/60 bg-sky-950 px-3 py-2 text-sm text-sky-100">
+            Someone else changed {conflictLabels.join(", ")} while you were editing. Your values are kept; saving will replace theirs. Use Reset to take theirs.
           </p>
         )}
         {formError && (
@@ -248,7 +280,7 @@ function PanelContent({ task }: { task: Task }) {
               <button type="submit" disabled={!dirty || pending} className="rounded bg-rose-600 px-4 py-2 font-semibold text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50">
                 {pending ? "Saving…" : "Save changes"}
               </button>
-              <button type="button" disabled={!dirty || pending} onClick={() => { setDraft(toDraft(task)); setFieldErrors({}); setFormError(null); setConfirmDiscard(false); }} className="rounded border border-gray-700 px-4 py-2 text-gray-200 hover:bg-gray-800 disabled:opacity-50">
+              <button type="button" disabled={!dirty || pending} onClick={() => { setDraft(toDraft(task)); setRemoteChanged(new Set()); setFieldErrors({}); setFormError(null); setConfirmDiscard(false); }} className="rounded border border-gray-700 px-4 py-2 text-gray-200 hover:bg-gray-800 disabled:opacity-50">
                 Reset
               </button>
               <span role="status" className="text-sm text-emerald-400">{saved ? "Saved" : ""}</span>

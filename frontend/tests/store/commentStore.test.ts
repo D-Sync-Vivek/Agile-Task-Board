@@ -229,3 +229,61 @@ describe("remove (optimistic)", () => {
     await adding;
   });
 });
+
+describe("receive / refresh (changes by other people)", () => {
+  it("adds, updates and deletes comments of the open task, idempotently", async () => {
+    api.comments.list.mockResolvedValue({ comments: [makeComment("c1", "u2", "Mia", "first")] });
+    await useCommentStore.getState().load("t1");
+    const store = () => useCommentStore.getState();
+
+    store().receive({ type: "created", comment: makeComment("c2", "u2", "Mia", "second") });
+    store().receive({ type: "created", comment: makeComment("c2", "u2", "Mia", "second") });
+    expect(store().comments.map((c) => c.id)).toEqual(["c1", "c2"]);
+
+    store().receive({ type: "updated", comment: makeComment("c2", "u2", "Mia", "second!", { edited: true }) });
+    expect(store().comments[1]).toMatchObject({ content: "second!", edited: true });
+
+    store().receive({ type: "deleted", commentId: "c1", taskId: "t1" });
+    store().receive({ type: "deleted", commentId: "c1", taskId: "t1" });
+    expect(store().comments.map((c) => c.id)).toEqual(["c2"]);
+  });
+
+  it("ignores comments of other tasks, and everything when no panel is open", async () => {
+    useCommentStore.getState().receive({ type: "created", comment: makeComment("c1", "u2", "Mia", "x") });
+    expect(useCommentStore.getState().comments).toEqual([]);
+    api.comments.list.mockResolvedValue({ comments: [] });
+    await useCommentStore.getState().load("t1");
+    useCommentStore.getState().receive({ type: "created", comment: makeComment("c9", "u2", "Mia", "x", { taskId: "t2" }) });
+    useCommentStore.getState().receive({ type: "deleted", commentId: "c9", taskId: "t2" });
+    expect(useCommentStore.getState().comments).toEqual([]);
+  });
+
+  it("a comment pushed while the list is loading is not lost: the list re-reads once it is ready", async () => {
+    const first = deferred<{ comments: ReturnType<typeof makeComment>[] }>();
+    api.comments.list.mockReturnValueOnce(first.promise).mockResolvedValueOnce({ comments: [makeComment("c1", "u2", "Mia", "pushed")] });
+    const loading = useCommentStore.getState().load("t1");
+    useCommentStore.getState().receive({ type: "created", comment: makeComment("c1", "u2", "Mia", "pushed") });
+    first.resolve({ comments: [] });
+    await loading;
+    await flush();
+    expect(useCommentStore.getState().comments.map((c) => c.id)).toEqual(["c1"]);
+  });
+
+  it("refresh re-reads the list but keeps a comment that is still being posted", async () => {
+    api.comments.list.mockResolvedValue({ comments: [makeComment("c1", "u2", "Mia", "one")] });
+    await useCommentStore.getState().load("t1");
+    useCommentStore.setState((s) => ({ comments: [...s.comments, { ...makeComment("pending-1", "u1", "Me", "typing"), pending: true }] }));
+
+    api.comments.list.mockResolvedValue({ comments: [makeComment("c1", "u2", "Mia", "one"), makeComment("c2", "u3", "Rahul", "missed while offline")] });
+    await useCommentStore.getState().refresh();
+    expect(useCommentStore.getState().comments.map((c) => c.id)).toEqual(["c1", "c2", "pending-1"]);
+  });
+
+  it("a failing refresh keeps what is shown", async () => {
+    api.comments.list.mockResolvedValue({ comments: [makeComment("c1", "u2", "Mia", "one")] });
+    await useCommentStore.getState().load("t1");
+    api.comments.list.mockRejectedValue(apiError(0, "NETWORK_ERROR", "offline"));
+    await useCommentStore.getState().refresh();
+    expect(useCommentStore.getState().comments.map((c) => c.id)).toEqual(["c1"]);
+  });
+});

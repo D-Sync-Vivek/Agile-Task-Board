@@ -35,13 +35,25 @@ export interface ApiClientConfig {
   baseUrl: string;
   /** Injectable for tests (and for non-browser callers that need a cookie jar). Defaults to global fetch. */
   fetchImpl?: typeof fetch;
+  /**
+   * The id of this tab's real-time connection, if it has one. It is sent with every request so the server doesn't
+   * echo the change back to the tab that made it (this tab already applied it).
+   */
+  getSocketId?: () => string | undefined;
 }
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException ? error.name === "AbortError" : (error as { name?: string })?.name === "AbortError";
 }
 
-export function createApiClient({ baseUrl, fetchImpl }: ApiClientConfig): ApiClient {
+function buildHeaders(hasBody: boolean, socketId: string | undefined): Record<string, string> | undefined {
+  const headers: Record<string, string> = {};
+  if (hasBody) headers["Content-Type"] = "application/json";
+  if (socketId) headers["X-Socket-Id"] = socketId;
+  return Object.keys(headers).length > 0 ? headers : undefined;
+}
+
+export function createApiClient({ baseUrl, fetchImpl, getSocketId }: ApiClientConfig): ApiClient {
   const root = baseUrl.replace(/\/+$/, "");
 
   async function request<T>(method: string, path: string, body: unknown, options?: RequestOptions): Promise<T> {
@@ -51,7 +63,7 @@ export function createApiClient({ baseUrl, fetchImpl }: ApiClientConfig): ApiCli
       response = await doFetch(`${root}${path}`, {
         method,
         credentials: "include",
-        headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+        headers: buildHeaders(body !== undefined, getSocketId?.()),
         body: body !== undefined ? JSON.stringify(body) : undefined,
         signal: options?.signal,
       });

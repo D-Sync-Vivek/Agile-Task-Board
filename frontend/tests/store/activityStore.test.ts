@@ -10,7 +10,7 @@ const ids = (store: ReturnType<typeof createActivityStore>) => store.getState().
 
 function setup() {
   const fetchPage = vi.fn();
-  return { fetchPage, store: createActivityStore(fetchPage) };
+  return { fetchPage, store: createActivityStore(fetchPage, (e, scope) => e.boardId === scope) };
 }
 
 beforeEach(() => {
@@ -192,5 +192,39 @@ describe("reset", () => {
     d.resolve(page(["late"]));
     await loading;
     expect(store.getState()).toMatchObject({ scopeId: null, status: "idle", entries: [] });
+  });
+});
+
+describe("receive (entries pushed by the server)", () => {
+  it("puts a new entry on top once, and ignores duplicates", async () => {
+    const { store, fetchPage } = setup();
+    fetchPage.mockResolvedValue(page(["a"]));
+    await store.getState().load("b1");
+    store.getState().receive(entry("b"));
+    store.getState().receive(entry("b"));
+    expect(ids(store)).toEqual(["b", "a"]);
+  });
+
+  it("ignores entries for another scope, and everything while no feed is open", async () => {
+    const { store, fetchPage } = setup();
+    store.getState().receive(entry("x")); // nothing open
+    expect(ids(store)).toEqual([]);
+    fetchPage.mockResolvedValue(page(["a"]));
+    await store.getState().load("other-board");
+    store.getState().receive(entry("b")); // entry() belongs to board "b1"
+    expect(ids(store)).toEqual(["a"]);
+  });
+
+  it("an entry pushed while the first page is loading is not lost: the feed re-reads once it is ready", async () => {
+    const { store, fetchPage } = setup();
+    const first = deferred<ActivityPage>();
+    fetchPage.mockReturnValueOnce(first.promise).mockResolvedValueOnce(page(["new", "a"]));
+    const loading = store.getState().load("b1");
+    store.getState().receive(entry("new")); // arrives mid-load: the page being fetched may predate it
+    first.resolve(page(["a"]));
+    await loading;
+    await flush();
+    expect(ids(store)).toEqual(["new", "a"]);
+    expect(fetchPage).toHaveBeenCalledTimes(2);
   });
 });

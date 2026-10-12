@@ -77,16 +77,18 @@ export async function updateComment(commentId: string, actor: CommentActor, inpu
 }
 
 /** The author can always remove their own comment; board moderators (OWNER/ADMIN) can remove anyone's. */
-export async function deleteComment(commentId: string, actor: CommentActor): Promise<void> {
-  const existing = await prisma.comment.findUnique({ where: { id: commentId }, select: { userId: true } });
+/** Returns the task it belonged to, or null if it was already gone (so nothing needs announcing). */
+export async function deleteComment(commentId: string, actor: CommentActor): Promise<{ taskId: string } | null> {
+  const existing = await prisma.comment.findUnique({ where: { id: commentId }, select: { userId: true, taskId: true } });
   if (!existing) throw commentNotFound();
   if (existing.userId !== actor.userId && !roleHasPermission(actor.role, "comment:moderate")) {
     throw new AppError(403, "FORBIDDEN", "You can only delete your own comments");
   }
   try {
     await prisma.comment.delete({ where: { id: commentId } });
+    return { taskId: existing.taskId };
   } catch (error) {
-    if (isPrismaError(error, "P2025")) return; // already gone: the goal is met
+    if (isPrismaError(error, "P2025")) return null; // already gone: the goal is met
     throw error;
   }
 }
