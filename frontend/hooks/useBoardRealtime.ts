@@ -32,6 +32,12 @@ export function useBoardRealtime(boardId: string, enabled: boolean): void {
 
     const socket = openSocket(API_URL);
 
+    // Set to false the moment this effect is cleaned up (board left, or switched). Anything still in flight for this
+    // connection — a join waiting for its answer, a timeout about to fire — must then do NOTHING: it belongs to a
+    // board that is no longer open, and acting on it would re-read the wrong board, reconnect a socket that was
+    // closed on purpose, or overwrite the status of the connection that replaced it.
+    let active = true;
+
     const leaveBoard = (message: string, kind: "error" | "info") => {
       toast[kind](message);
       useBoardStore.getState().reset();
@@ -46,6 +52,7 @@ export function useBoardRealtime(boardId: string, enabled: boolean): void {
     socket.on("connect", async () => {
       try {
         const ack = await socket.timeout(JOIN_TIMEOUT_MS).emitWithAck("board:join", { boardId });
+        if (!active) return;
         if (ack.ok) {
           setStatus("live");
           resyncAfterReconnect(boardId);
@@ -55,6 +62,7 @@ export function useBoardRealtime(boardId: string, enabled: boolean): void {
           void useBoardStore.getState().loadBoard(boardId, { silent: true });
         }
       } catch {
+        if (!active) return;
         setStatus("reconnecting"); // no answer in time
         socket.disconnect().connect();
       }
@@ -82,6 +90,7 @@ export function useBoardRealtime(boardId: string, enabled: boolean): void {
     });
 
     return () => {
+      active = false;
       closeSocket();
       setStatus("idle");
     };

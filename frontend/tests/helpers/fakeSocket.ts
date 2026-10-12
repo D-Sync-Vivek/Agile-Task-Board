@@ -14,6 +14,9 @@ export class FakeSocket {
   /** Answer to board:join. Set `joinHangs` to simulate a server that never answers. */
   joinAck: JoinAck = { ok: true };
   joinHangs = false;
+  /** When true, board:join answers are held until `answerJoin` / `failJoin` is called (to test late answers). */
+  holdJoins = false;
+  private heldJoins: { resolve: (ack: JoinAck) => void; reject: (error: Error) => void }[] = [];
   sent: { event: string; payload: unknown }[] = [];
   private listeners = new Map<string, Set<Listener>>();
 
@@ -49,7 +52,16 @@ export class FakeSocket {
   emitWithAck(event: string, payload: unknown): Promise<JoinAck> {
     this.sent.push({ event, payload });
     if (this.joinHangs) return Promise.reject(new Error("operation has timed out"));
+    if (this.holdJoins) return new Promise((resolve, reject) => this.heldJoins.push({ resolve, reject }));
     return Promise.resolve(this.joinAck);
+  }
+  /** Delivers the server's answer to every held join. */
+  answerJoin(ack: JoinAck = this.joinAck) {
+    for (const held of this.heldJoins.splice(0)) held.resolve(ack);
+  }
+  /** The ack never arrives: the client-side timeout fires. */
+  failJoin() {
+    for (const held of this.heldJoins.splice(0)) held.reject(new Error("operation has timed out"));
   }
 
   // ---- test controls

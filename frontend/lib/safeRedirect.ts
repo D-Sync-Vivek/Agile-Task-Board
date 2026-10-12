@@ -1,11 +1,13 @@
 /**
  * Validates a post-login redirect target taken from the URL (?next=...). Only same-site relative paths are allowed;
- * anything else (absolute URLs, //evil.com, /\evil.com, javascript:) falls back to "/" so the login page can't be
- * used as an open redirect.
+ * anything else (absolute URLs, //evil.com, /\evil.com, javascript:) falls back to "/dashboard" so the login page
+ * can't be used as an open redirect.
  */
+const DEFAULT_PATH = "/dashboard";
+
 export function safeNextPath(raw: string | null | undefined): string {
-  if (!raw) return "/dashboard";
-  if (!raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) return "/dashboard";
-  if (/[\u0000-\u001f]/.test(raw)) return "/"; // control characters / header-injection tricks
+  if (!raw) return DEFAULT_PATH;
+  if (!raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) return DEFAULT_PATH;
+  if (/[\u0000-\u001f]/.test(raw)) return DEFAULT_PATH; // control characters / header-injection tricks
   return raw;
 }

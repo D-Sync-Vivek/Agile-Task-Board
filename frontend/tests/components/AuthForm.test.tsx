@@ -29,13 +29,13 @@ async function fillLogin(email = "vivek@example.com", password = "password123") 
 }
 
 describe("login", () => {
-  it("submits the entered credentials, then goes to the home page", async () => {
+  it("submits the entered credentials, then goes to the dashboard", async () => {
     api.auth.login.mockResolvedValueOnce({ user });
     render(<AuthForm mode="login" />);
     await fillLogin();
 
     expect(api.auth.login).toHaveBeenCalledWith({ email: "vivek@example.com", password: "password123" });
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/"));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/dashboard"));
   });
 
   it("returns to the page the user came from (?next=)", async () => {
@@ -51,7 +51,7 @@ describe("login", () => {
     api.auth.login.mockResolvedValueOnce({ user });
     render(<AuthForm mode="login" />);
     await fillLogin();
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/"));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/dashboard"));
     expect(router.replace).not.toHaveBeenCalledWith(next);
   });
 
@@ -97,7 +97,7 @@ describe("login", () => {
   it("sends an already signed-in visitor away from the login page", async () => {
     useAuthStore.setState({ status: "authenticated", user });
     render(<AuthForm mode="login" />);
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/"));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/dashboard"));
   });
 
   it("checks the session first when the status is still unknown", async () => {
@@ -120,7 +120,7 @@ describe("register", () => {
     await u.click(screen.getByRole("button", { name: "Create account" }));
 
     expect(api.auth.register).toHaveBeenCalledWith({ name: "Vivek Kumar", email: "vivek@example.com", password: "password123" });
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/"));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/dashboard"));
   });
 
   it("shows a duplicate-email error", async () => {

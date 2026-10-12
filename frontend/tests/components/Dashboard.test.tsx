@@ -2,7 +2,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import DashboardPage from "@/app/page";
+import DashboardPage from "@/app/dashboard/page";
 import { ApiError } from "@/lib/api/client";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useBoardListStore } from "@/store/useBoardListStore";
@@ -10,7 +10,7 @@ import { useBoardStore } from "@/store/useBoardStore";
 import type { BoardSummary } from "@/types/api";
 import { api, resetApiMock } from "../helpers/apiMock";
 import { apiError, deferred } from "../helpers/fixtures";
-import { resetNav, router } from "../helpers/nav";
+import { nav, resetNav, router } from "../helpers/nav";
 
 vi.mock("@/lib/api", () => import("../helpers/apiMock"));
 vi.mock("next/navigation", () => import("../helpers/nav"));
@@ -24,6 +24,7 @@ const summary = (over: Partial<BoardSummary> = {}): BoardSummary => ({
 beforeEach(() => {
   resetApiMock();
   resetNav();
+  nav.pathname = "/dashboard";
   useBoardListStore.getState().reset();
   useBoardStore.getState().reset();
   useAuthStore.setState({ status: "authenticated", user: me });
@@ -91,7 +92,7 @@ describe("boards dashboard", () => {
   it("redirects anonymous visitors to /login and loads nothing", async () => {
     useAuthStore.setState({ status: "anonymous", user: null });
     render(<DashboardPage />);
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/login?next=%2F"));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/login?next=%2Fdashboard"));
     expect(api.boards.list).not.toHaveBeenCalled();
   });
 });

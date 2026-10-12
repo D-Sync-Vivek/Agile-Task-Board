@@ -18,7 +18,8 @@ function files(dir: string): string[] {
   });
 }
 
-const sources = SOURCE_DIRS.flatMap((d) => files(path.join(ROOT, d))).map((file) => ({ file: path.relative(ROOT, file), text: readFileSync(file, "utf8") }));
+// Normalise to forward slashes so the "store/..." checks also work on Windows (path.relative uses backslashes there).
+const sources = SOURCE_DIRS.flatMap((d) => files(path.join(ROOT, d))).map((file) => ({ file: path.relative(ROOT, file).split(path.sep).join("/"), text: readFileSync(file, "utf8") }));
 
 const FORBIDDEN: [string, RegExp][] = [
   ["localStorage", /\blocalStorage\b/],
